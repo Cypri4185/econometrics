@@ -1,0 +1,3149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Geometry of Regressions — Interactive Lab</title>
+
+  <!-- Optional KaTeX CDN for crisp LaTeX math typesetting with automatic graceful Unicode fallback when offline -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous" onload="window.renderAllMath && window.renderAllMath()"></script>
+
+  <style>
+    /* =========================================================================
+       DESIGN TOKENS — Warm Oatmeal Editorial Aesthetic (Tufte / Distill.pub)
+       ========================================================================= */
+    :root {
+      --bg-page: #FAF8F4;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F3EFE7;
+      --bg-code: #F8FAFC;
+      --border: #E2DDD5;
+      --border-strong: #CBD5E1;
+
+      --ink-primary: #1E293B;
+      --ink-secondary: #475569;
+      --ink-muted: #64748B;
+
+      /* Semantic Vector Colors */
+      --c-blue: #2563EB;      /* Wall / Data y / Art Student */
+      --c-blue-soft: #DBEAFE;
+      --c-emerald: #059669;   /* Regressors X / Subspace / Fitted */
+      --c-emerald-soft: #D1FAE5;
+      --c-crimson: #DC2626;   /* Residuals u, e / Bias / Warnings */
+      --c-crimson-soft: #FEE2E2;
+      --c-violet: #7C3AED;    /* Instruments z */
+      --c-violet-soft: #EDE9FE;
+      --c-amber: #D97706;     /* GMM / Landlord / Weighted Ellipses */
+      --c-amber-soft: #FEF3C7;
+      --c-slate: #475569;     /* App / Neutral */
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.06);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-serif: "Charter", "Georgia", "Cambria", "Times New Roman", serif;
+      --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-page);
+      color: var(--ink-primary);
+      font-family: var(--font-sans);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* =========================================================================
+       HEADER & TOP NAVIGATION
+       ========================================================================= */
+    .site-header {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .header-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 14px 20px 0 20px;
+    }
+
+    .brand-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 16px;
+      margin-bottom: 12px;
+    }
+
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink-primary);
+      margin: 0;
+    }
+
+    .brand-subtitle {
+      font-size: 0.85rem;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 0;
+      scrollbar-width: thin;
+    }
+
+    .tab-btn {
+      appearance: none;
+      background: transparent;
+      border: none;
+      border-bottom: 2.5px solid transparent;
+      padding: 10px 14px;
+      font-family: var(--font-sans);
+      font-size: 0.87rem;
+      font-weight: 600;
+      color: var(--ink-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      border-radius: 8px 8px 0 0;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+
+    .tab-btn:hover {
+      color: var(--ink-primary);
+      background: var(--bg-subtle);
+    }
+
+    .tab-btn.active {
+      color: var(--c-blue);
+      border-bottom-color: var(--c-blue);
+      background: rgba(37, 99, 235, 0.04);
+    }
+
+    /* =========================================================================
+       MAIN LAYOUT & CARDS
+       ========================================================================= */
+    .main-wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 22px 20px 48px 20px;
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.22s ease-out;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-intro {
+      margin-bottom: 18px;
+    }
+
+    .section-intro h2 {
+      font-family: var(--font-serif);
+      font-size: 1.55rem;
+      margin: 0 0 6px 0;
+      letter-spacing: -0.015em;
+    }
+
+    .section-intro p {
+      margin: 0;
+      color: var(--ink-secondary);
+      font-size: 0.95rem;
+      max-width: 920px;
+    }
+
+    .lab-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .dual-canvas-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 980px) {
+      .lab-grid {
+        grid-template-columns: 1fr;
+      }
+      .dual-canvas-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 18px;
+    }
+
+    .card + .card {
+      margin-top: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 470px;
+      background: #FCFBF9;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .canvas-container.compact {
+      height: 390px;
+    }
+
+    .canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: default;
+    }
+
+    .canvas-hint {
+      font-size: 0.78rem;
+      color: var(--ink-muted);
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* =========================================================================
+       CONTROLS: BUTTONS, SEGMENTED SWITCHERS, SLIDERS, BADGES
+       ========================================================================= */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--ink-primary);
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: var(--bg-subtle);
+      border-color: var(--ink-muted);
+    }
+
+    .btn.active {
+      background: var(--ink-primary);
+      color: #FFFFFF;
+      border-color: var(--ink-primary);
+    }
+
+    .btn.primary {
+      background: var(--c-blue);
+      color: #FFFFFF;
+      border-color: var(--c-blue);
+    }
+
+    .btn.primary:hover {
+      background: #1D4ED8;
+    }
+
+    .btn.amber.active {
+      background: var(--c-amber);
+      border-color: var(--c-amber);
+      color: #FFFFFF;
+    }
+
+    .btn.emerald.active {
+      background: var(--c-emerald);
+      border-color: var(--c-emerald);
+      color: #FFFFFF;
+    }
+
+    .btn.violet.active {
+      background: var(--c-violet);
+      border-color: var(--c-violet);
+      color: #FFFFFF;
+    }
+
+    .segmented {
+      display: inline-flex;
+      background: var(--bg-subtle);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+
+    .segmented .seg-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ink-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .segmented .seg-btn.active {
+      background: #FFFFFF;
+      color: var(--ink-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .control-group {
+      margin-bottom: 13px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--ink-secondary);
+      margin-bottom: 5px;
+    }
+
+    .control-val {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--ink-primary);
+      background: var(--bg-subtle);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--c-blue);
+      cursor: pointer;
+      height: 6px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--c-blue);
+      cursor: pointer;
+    }
+
+    /* =========================================================================
+       METRICS, READOUTS, TABLES, GAUGES, SWATCHES
+       ========================================================================= */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .badge.green { background: var(--c-emerald-soft); color: #065F46; }
+    .badge.red { background: var(--c-crimson-soft); color: #991B1B; }
+    .badge.blue { background: var(--c-blue-soft); color: #1E40AF; }
+    .badge.amber { background: var(--c-amber-soft); color: #92400E; }
+    .badge.violet { background: var(--c-violet-soft); color: #5B21B6; }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metrics-grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .metric-box {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+
+    .metric-box .m-label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 3px;
+    }
+
+    .metric-box .m-value {
+      font-family: var(--font-mono);
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+    }
+
+    .metric-box .m-sub {
+      font-size: 0.74rem;
+      color: var(--ink-secondary);
+      margin-top: 2px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+
+    .data-table th, .data-table td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table th {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--ink-muted);
+      background: var(--bg-page);
+    }
+
+    .data-table td.mono {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .data-table tr.clickable-row {
+      cursor: pointer;
+      transition: background 0.14s;
+    }
+
+    .data-table tr.clickable-row:hover {
+      background: #EFF6FF;
+    }
+
+    .callout {
+      background: #FFFBEB;
+      border-left: 3.5px solid var(--c-amber);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 10px 13px;
+      font-size: 0.84rem;
+      color: var(--ink-secondary);
+      margin-top: 12px;
+    }
+
+    .callout.blue {
+      background: #EFF6FF;
+      border-left-color: var(--c-blue);
+    }
+
+    .callout.emerald {
+      background: #ECFDF5;
+      border-left-color: var(--c-emerald);
+    }
+
+    .callout.crimson {
+      background: #FEF2F2;
+      border-left-color: var(--c-crimson);
+    }
+
+    .callout strong {
+      color: var(--ink-primary);
+    }
+
+    .swatch-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-top: 12px;
+    }
+
+    .color-swatch {
+      width: 58px;
+      height: 58px;
+      border-radius: var(--radius-sm);
+      border: 2px solid rgba(15, 23, 42, 0.15);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+
+    .matrix-display {
+      display: inline-grid;
+      grid-template-columns: auto auto;
+      gap: 4px 14px;
+      padding: 8px 14px;
+      border-left: 2px solid var(--ink-primary);
+      border-right: 2px solid var(--ink-primary);
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      background: var(--bg-page);
+    }
+
+    .gauge-wrap {
+      margin-bottom: 12px;
+    }
+
+    .gauge-bar-bg {
+      height: 10px;
+      background: #E2E8F0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .gauge-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.15s ease, background-color 0.15s ease;
+    }
+
+    .master-eq-banner {
+      background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+      color: #F8FAFC;
+      border-radius: var(--radius-lg);
+      padding: 24px 26px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+    }
+
+    .master-eq-banner .eq-kicker {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #93C5FD;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .master-eq-banner .eq-main {
+      font-size: 1.25rem;
+      margin: 8px 0 12px 0;
+      overflow-x: auto;
+    }
+
+    .master-eq-banner .eq-sub {
+      font-size: 0.9rem;
+      color: #CBD5E1;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .roadmap-step {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+
+    .roadmap-step .step-num {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      border-radius: 999px;
+      background: var(--c-blue);
+      color: #FFFFFF;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .roadmap-step h4 {
+      margin: 0 0 6px 0;
+      font-size: 0.92rem;
+    }
+
+    .roadmap-step p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--ink-secondary);
+    }
+
+    .legend-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--ink-secondary);
+      margin-top: 8px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .site-footer {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 18px 20px 36px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--ink-muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =======================================================================
+       HEADER & TAB NAVIGATION
+       ======================================================================= -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-row">
+        <h1 class="brand-title">The Geometry of Regressions — Interactive Lab</h1>
+        <p class="brand-subtitle">Based on Antonio Cozzolino's monograph · Drag vector tips directly on any canvas</p>
+      </div>
+      <nav class="tab-nav" role="tablist" aria-label="Regression Geometry Labs">
+        <button class="tab-btn active" data-tab="tab1" role="tab">1. Vector Spaces &amp; Span</button>
+        <button class="tab-btn" data-tab="tab2" role="tab">2. Inner Products</button>
+        <button class="tab-btn" data-tab="tab3" role="tab">3. Projections, OLS &amp; GLS</button>
+        <button class="tab-btn" data-tab="tab4" role="tab">4. IV &amp; Endogeneity</button>
+        <button class="tab-btn" data-tab="tab5" role="tab">5. GMM &amp; Moments</button>
+        <button class="tab-btn" data-tab="tab6" role="tab">6. Unified View</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-wrap">
+
+    <!-- =====================================================================
+         TAB 1: VECTOR SPACES, SUBSPACES, SPAN & MULTICOLLINEARITY
+         ===================================================================== -->
+    <section id="tab1" class="tab-panel active">
+      <div class="section-intro">
+        <h2>1. Vector Spaces: Defining the Mixtures</h2>
+        <p>
+          Every variable observed on <span class="math" data-tex="n">n</span> units is a vector in <span class="math" data-tex="\mathbb{R}^n">ℝⁿ</span>.
+          The values a linear model can produce form a subspace—your <strong>palette</strong> <span class="math" data-tex="\operatorname{col}(X) = \{Xb\}">col(X) = {Xb}</span>.
+          Explore closure under addition and scalar multiplication, or mix paint tubes to see how linear dependence breaks coefficient identification.
+        </p>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px; padding: 12px 16px;">
+        <div class="card-header" style="margin-bottom: 0;">
+          <div class="segmented" id="t1-mode-switch">
+            <button class="seg-btn active" data-mode="subspace">Mode A: Subspace vs. Shifted Line (Closure)</button>
+            <button class="seg-btn" data-mode="span">Mode B: Linear Combinations, Span &amp; Multicollinearity</button>
+          </div>
+          <button class="btn" id="t1-reset">Reset to Paper Example</button>
+        </div>
+      </div>
+
+      <!-- MODE A: SUBSPACE VS SHIFTED LINE -->
+      <div id="t1-mode-subspace" class="lab-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Closure Under Addition &amp; Scaling</h3>
+            <span id="t1a-status-badge" class="badge green">Subspace: Closed (0 ∈ S)</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="canvas-t1a"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span>Drag handles <strong>u</strong> and <strong>v</strong> along the line.</span>
+            <span>When c = 0, u + v and α·u stay on the line.</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Line &amp; Primer Controls</h3>
+            </div>
+            <div class="control-group">
+              <div class="control-label">
+                <span>Intercept c ("spoons of white primer")</span>
+                <span class="control-val" id="t1a-c-val">0.00</span>
+              </div>
+              <input type="range" id="t1a-c" min="-2.5" max="2.5" step="0.1" value="0" />
+            </div>
+            <div class="control-group">
+              <div class="control-label">
+                <span>Slope m of line y = m·x + c</span>
+                <span class="control-val" id="t1a-m-val">0.50</span>
+              </div>
+              <input type="range" id="t1a-m" min="-2" max="2" step="0.1" value="0.5" />
+            </div>
+            <div class="control-group">
+              <div class="control-label">
+                <span>Scalar multiple α (for α·u)</span>
+                <span class="control-val" id="t1a-alpha-val">-1.50</span>
+              </div>
+              <input type="range" id="t1a-alpha" min="-2.5" max="2.5" step="0.1" value="-1.5" />
+            </div>
+            <div class="btn-row" style="margin-top: 10px;">
+              <button class="btn" id="t1a-preset-subspace">Subspace (c = 0)</button>
+              <button class="btn" id="t1a-preset-shifted">Shifted Line (c = 1, Primer)</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Live Closure Check</h3>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <div class="m-label">Vector u</div>
+                <div class="m-value" id="t1a-u-read">(1.20, 0.60)</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">Vector v</div>
+                <div class="m-value" id="t1a-v-read">(2.00, 1.00)</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">Sum u + v</div>
+                <div class="m-value" id="t1a-sum-read">(3.20, 1.60)</div>
+                <div class="m-sub" id="t1a-sum-check">On line S ✓</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">Origin (0, 0)</div>
+                <div class="m-value" id="t1a-orig-read">0 ∈ S</div>
+                <div class="m-sub" id="t1a-orig-sub">No paint allowed</div>
+              </div>
+            </div>
+            <div class="callout" id="t1a-story-note">
+              <strong>Back to the wall:</strong> With c = 0, mixing two shades from your palette always produces another shade in the palette. Increase c to require "one spoon of white primer": combining two allowed patches yields two spoons of primer, falling outside the set!
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODE B: LINEAR COMBINATIONS, SPAN & MULTICOLLINEARITY -->
+      <div id="t1-mode-span" class="lab-grid" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Paint-Mixing Palette: Linear Combinations &amp; Span</h3>
+            <span id="t1b-rank-badge" class="badge green">Full Rank: rank(X) = 2</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="canvas-t1b"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span>Drag base tubes <strong>v₁</strong> (Red) and <strong>v₂</strong> (Yellow). Try aligning v₂ with v₁ to see span collapse!</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recipe Weights &amp; Tubes</h3>
+            </div>
+            <div class="control-group">
+              <div class="control-label">
+                <span>Weight b₁ (Red tube v₁)</span>
+                <span class="control-val" id="t1b-b1-val">1.50</span>
+              </div>
+              <input type="range" id="t1b-b1" min="-2.5" max="3" step="0.1" value="1.5" />
+            </div>
+            <div class="control-group">
+              <div class="control-label">
+                <span>Weight b₂ (Yellow tube v₂)</span>
+                <span class="control-val" id="t1b-b2-val">1.00</span>
+              </div>
+              <input type="range" id="t1b-b2" min="-2.5" max="3" step="0.1" value="1.0" />
+            </div>
+
+            <label class="toggle-row" for="t1b-orange-toggle">
+              <div>
+                <strong style="font-size: 0.85rem;">Add Orange Tube (v₃ = v₁ + v₂)</strong>
+                <div style="font-size: 0.76rem; color: var(--ink-muted);">Demonstrates linear dependence / perfect multicollinearity</div>
+              </div>
+              <input type="checkbox" id="t1b-orange-toggle" />
+            </label>
+
+            <div id="t1b-orange-controls" style="display: none;">
+              <div class="control-group">
+                <div class="control-label">
+                  <span>Shift recipe into Orange tube (t)</span>
+                  <span class="control-val" id="t1b-t-val">0.60</span>
+                </div>
+                <input type="range" id="t1b-t" min="-1.5" max="2" step="0.1" value="0.6" />
+              </div>
+              <div class="callout crimson" style="margin-top: 8px;">
+                <strong>Perfect Multicollinearity!</strong> Notice that two completely different recipes produce the <strong>exact same color w</strong>:
+                <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-top: 5px;" id="t1b-equiv-recipes"></div>
+              </div>
+            </div>
+
+            <div class="swatch-row">
+              <div class="color-swatch" id="t1b-swatch"></div>
+              <div style="font-size: 0.82rem;">
+                <div style="font-weight: 700;">Mixed Color w = b₁v₁ + b₂v₂</div>
+                <div style="font-family: var(--font-mono); color: var(--ink-secondary);" id="t1b-w-coords">w = (2.30, 2.30)</div>
+                <div style="color: var(--ink-muted); font-size: 0.76rem;" id="t1b-recipe-desc">Recipe (1.5, 1.0) in ℝ² → Color in ℝ²</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Subspace Diagnostics</h3>
+            </div>
+            <div class="metrics-grid three">
+              <div class="metric-box">
+                <div class="m-label">Tubes (k)</div>
+                <div class="m-value" id="t1b-k">2</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">rank(X) = dim</div>
+                <div class="m-value" id="t1b-rank">2</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">det([v₁, v₂])</div>
+                <div class="m-value" id="t1b-det">2.50</div>
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top: 12px;">
+              <button class="btn" id="t1b-preset-indep">Independent Basis</button>
+              <button class="btn" id="t1b-preset-collinear">Collinear (v₂ = 2v₁)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 2: INNER PRODUCTS — ONE SPACE, MANY DISTANCES
+         ===================================================================== -->
+    <section id="tab2" class="tab-panel">
+      <div class="section-intro">
+        <h2>2. Inner Products: One Space, Many Distances</h2>
+        <p>
+          A weighted inner product <span class="math" data-tex="\langle u, v \rangle_A = u' A v">⟨u, v⟩_A = u'Av</span> induces a complete geometry: lengths, distances, angles, and orthogonality.
+          Compare the same two colors in standard paper coordinates (left) and in the judge's transformed coordinates <span class="math" data-tex="A^{1/2} w">A^(1/2) w</span> (right), where the judge's unit ellipse becomes a true circle.
+        </p>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="card-header" style="margin-bottom: 10px;">
+          <h3 class="card-title">Select Judge (Inner Product Matrix A)</h3>
+          <button class="btn" id="t2-reset">Reset to Paper Example</button>
+        </div>
+        <div class="btn-row" id="t2-judge-btns">
+          <button class="btn" data-judge="app">App (OLS, A = I)</button>
+          <button class="btn amber active" data-judge="landlord">Landlord (A = 4 dd' + ¼ hh')</button>
+          <button class="btn" data-judge="student">Art Student (A = ¼ dd' + 4 hh')</button>
+          <button class="btn" data-judge="custom">Custom SPD Matrix A</button>
+        </div>
+
+        <div id="t2-custom-panel" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
+          <div class="lab-grid" style="grid-template-columns: 1fr 1fr 1fr auto; gap: 14px; align-items: center;">
+            <div class="control-group" style="margin:0;">
+              <div class="control-label"><span>Eigenvalue λ₁</span><span class="control-val" id="t2-l1-val">4.00</span></div>
+              <input type="range" id="t2-l1" min="0.2" max="6" step="0.1" value="4" />
+            </div>
+            <div class="control-group" style="margin:0;">
+              <div class="control-label"><span>Eigenvalue λ₂</span><span class="control-val" id="t2-l2-val">0.25</span></div>
+              <input type="range" id="t2-l2" min="0.2" max="6" step="0.1" value="0.25" />
+            </div>
+            <div class="control-group" style="margin:0;">
+              <div class="control-label"><span>Rotation φ (deg)</span><span class="control-val" id="t2-phi-val">45°</span></div>
+              <input type="range" id="t2-phi" min="0" max="180" step="5" value="45" />
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--ink-muted); margin-bottom: 4px;">MATRIX A</div>
+              <div class="matrix-display" id="t2-matrix-box">
+                <span>2.125</span><span>1.875</span>
+                <span>1.875</span><span>2.125</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dual-canvas-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Paper Coordinates (Standard View)</h3>
+            <span class="badge blue">Unit ball: {w : w'Aw = 1}</span>
+          </div>
+          <div class="canvas-container compact">
+            <canvas id="canvas-t2-left"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span>Drag <strong>u</strong> (reddish) or <strong>v</strong> (greenish). Pure red (1,0) &amp; pure green (0,1) shown in gray.</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Judge's Coordinates (A<sup>1/2</sup> w)</h3>
+            <span class="badge amber">True Judge Lengths &amp; Angles</span>
+          </div>
+          <div class="canvas-container compact">
+            <canvas id="canvas-t2-right"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span>Ordinary visual lengths &amp; angles here equal the judge's A-lengths &amp; A-angles.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <div class="card-header">
+          <h3 class="card-title">Geometric Comparison: App (A = I) vs. Selected Judge (A)</h3>
+          <div class="matrix-display" id="t2-active-matrix" style="padding: 4px 10px; font-size: 0.78rem;"></div>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Geometric Quantity</th>
+                <th>App (Euclidean, A = I)</th>
+                <th id="t2-judge-col-head">Landlord (A)</th>
+                <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody id="t2-metrics-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 3: PROJECTIONS, OLS & GLS (THREE JUDGES, THREE PATCHES)
+         ===================================================================== -->
+    <section id="tab3" class="tab-panel">
+      <div class="section-intro">
+        <h2>3. Projections, OLS &amp; GLS: Three Judges, Three Patches</h2>
+        <p>
+          Every linear estimator projects the wall <span class="math" data-tex="y">y</span> onto the palette <span class="math" data-tex="S = \operatorname{col}(X)">S = col(X)</span> using its own notion of distance:
+          <span class="math" data-tex="\hat{b} = (X'AX)^{-1} X'Ay">b̂ = (X'AX)⁻¹X'Ay</span>.
+          Each judge's residual is orthogonal to <span class="math" data-tex="S">S</span> in their own geometry, even when it looks oblique on paper.
+        </p>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px; padding: 12px 16px;">
+        <div class="card-header" style="margin-bottom: 0;">
+          <div class="segmented" id="t3-mode-switch">
+            <button class="seg-btn active" data-mode="compare">Compare All Three Judges (Fig. 6)</button>
+            <button class="seg-btn" data-mode="single">Single Judge + Pythagoras Nudge Test</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" id="t3-transform-btn" style="display: none;">Transform to Judge's Coordinates (C = A<sup>1/2</sup>)</button>
+            <button class="btn" id="t3-reset">Reset to Paper Example</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lab-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title" id="t3-canvas-title">Figure 6: Same Wall, Same Palette, Three Criteria</h3>
+            <span class="badge blue" id="t3-coord-badge">Original Coordinates</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="canvas-t3"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span id="t3-hint-text">Drag the wall <strong>y</strong> or tube <strong>x</strong>. Each curve touches the palette at a different patch.</span>
+          </div>
+          <div class="legend-strip">
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-slate);"></span>App (OLS): Patch 3</span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-crimson);"></span>Landlord: Patch 2</span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-blue);"></span>Art Student: Patch 1</span>
+          </div>
+        </div>
+
+        <div>
+          <!-- Compare Mode Sidebar -->
+          <div id="t3-compare-panel">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Three Judges, Three Recipes</h3>
+              </div>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Judge</th>
+                    <th>Recipe b̂</th>
+                    <th>Mixture ŷ</th>
+                    <th>‖e‖<sub>A</sub></th>
+                  </tr>
+                </thead>
+                <tbody id="t3-compare-tbody"></tbody>
+              </table>
+              <div class="callout blue">
+                <strong>The Motivation, solved:</strong> Around the wall <em>y</em>, each judge draws colors equally distant from it—a circle for the app, ellipses for the landlord and art student. The closest mixture is where the palette touches the smallest curve.
+              </div>
+            </div>
+          </div>
+
+          <!-- Single Judge + Pythagoras Sidebar -->
+          <div id="t3-single-panel" style="display: none;">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Choose Judge / GLS Noise Structure</h3>
+              </div>
+              <div class="btn-row" id="t3-judge-btns" style="margin-bottom: 12px;">
+                <button class="btn active" data-judge="app">App (OLS, A=I)</button>
+                <button class="btn amber" data-judge="landlord">Landlord</button>
+                <button class="btn" data-judge="student">Art Student</button>
+                <button class="btn emerald" data-judge="gls">Custom GLS (Ω⁻¹)</button>
+              </div>
+
+              <div id="t3-gls-controls" style="display: none; padding-top: 8px; border-top: 1px solid var(--border);">
+                <div class="control-group">
+                  <div class="control-label"><span>Channel 1 Noise σ₁</span><span class="control-val" id="t3-s1-val">1.00</span></div>
+                  <input type="range" id="t3-s1" min="0.4" max="3.0" step="0.1" value="1.0" />
+                </div>
+                <div class="control-group">
+                  <div class="control-label"><span>Channel 2 Noise σ₂</span><span class="control-val" id="t3-s2-val">2.00</span></div>
+                  <input type="range" id="t3-s2" min="0.4" max="3.0" step="0.1" value="2.0" />
+                </div>
+                <div class="control-group">
+                  <div class="control-label"><span>Error Correlation ρ</span><span class="control-val" id="t3-rho-val">0.00</span></div>
+                  <input type="range" id="t3-rho" min="-0.85" max="0.85" step="0.05" value="0.0" />
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Projection &amp; Orthogonality Readout</h3>
+              </div>
+              <div class="metrics-grid">
+                <div class="metric-box">
+                  <div class="m-label">Recipe b̂ = (x'Ax)⁻¹x'Ay</div>
+                  <div class="m-value" id="t3-bhat">0.97</div>
+                </div>
+                <div class="metric-box">
+                  <div class="m-label">Fitted ŷ = b̂x</div>
+                  <div class="m-value" id="t3-yhat">(3.88, 0.97)</div>
+                </div>
+                <div class="metric-box">
+                  <div class="m-label">A-Orthogonality ⟨e, x⟩<sub>A</sub></div>
+                  <div class="m-value" style="color: var(--c-emerald);" id="t3-aorth">0.0000</div>
+                </div>
+                <div class="metric-box">
+                  <div class="m-label">Euclidean ⟨e, x⟩</div>
+                  <div class="m-value" id="t3-eorth">0.0000</div>
+                </div>
+              </div>
+              <div class="metric-box" style="margin-top: 10px;">
+                <div class="m-label">Pythagoras Nudge Test (Drag green dot v on S)</div>
+                <div style="font-family: var(--font-mono); font-size: 0.85rem; margin-top: 4px;" id="t3-pyth-eq"></div>
+                <div class="m-sub" id="t3-r2-note"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 4: IV, ENDOGENEITY & 2SLS (ROOM LIGHT & LIGHT-BLIND SENSOR)
+         ===================================================================== -->
+    <section id="tab4" class="tab-panel">
+      <div class="section-intro">
+        <h2>4. IV &amp; Endogeneity: The Room Light &amp; Light-Blind Sensor</h2>
+        <p>
+          When the error <span class="math" data-tex="u">u</span> (the warm room light) is correlated with <span class="math" data-tex="x">x</span> (<span class="math" data-tex="\langle x, u \rangle \neq 0">⟨x, u⟩ ≠ 0</span>),
+          OLS attributes the shadow <span class="math" data-tex="P_x u">P_x u</span> to <span class="math" data-tex="x">x</span> and becomes biased.
+          An instrument <span class="math" data-tex="z">z</span> that is <strong>blind to the error</strong> (<span class="math" data-tex="z \perp u">z ⊥ u</span>) yet <strong>sees the regressor</strong> (<span class="math" data-tex="z \not\perp x">z ⊄ x</span>) recovers <span class="math" data-tex="\beta">β</span> via oblique projection along <span class="math" data-tex="z^\perp">z⊥</span>.
+        </p>
+      </div>
+
+      <div class="lab-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Figure 8: OLS Endogeneity Bias vs. IV Oblique Projection</h3>
+            <button class="btn" id="t4-reset">Reset to Fig. 8</button>
+          </div>
+          <div class="canvas-container">
+            <canvas id="canvas-t4"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span>Drag tip of <strong>y</strong> (moves error u relative to βx) and tip of instrument <strong>z</strong> (violet).</span>
+          </div>
+          <div class="legend-strip">
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-emerald);"></span>True βx</span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-crimson);"></span>Error u &amp; OLS Bias P<sub>x</sub>u</span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-violet);"></span>Instrument z &amp; Oblique Projection (⊥ z)</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Estimator Comparison</h3>
+            </div>
+            <div class="metrics-grid three">
+              <div class="metric-box">
+                <div class="m-label">True β</div>
+                <div class="m-value" style="color: var(--c-emerald);" id="t4-true-b">3.00</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">OLS β̂<sub>OLS</sub></div>
+                <div class="m-value" style="color: var(--c-crimson);" id="t4-ols-b">4.00</div>
+                <div class="m-sub" id="t4-ols-bias">Bias: +1.00</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">IV β̂<sub>IV</sub></div>
+                <div class="m-value" style="color: var(--c-violet);" id="t4-iv-b">3.00</div>
+                <div class="m-sub" id="t4-iv-bias">Bias: 0.00</div>
+              </div>
+            </div>
+
+            <div class="control-group" style="margin-top: 14px;">
+              <div class="control-label">
+                <span>True structural parameter β</span>
+                <span class="control-val" id="t4-beta-val">3.00</span>
+              </div>
+              <input type="range" id="t4-beta" min="-3" max="5" step="0.25" value="3" />
+            </div>
+
+            <div class="btn-row" style="margin-top: 10px;">
+              <button class="btn" id="t4-pre-valid">Valid IV (Fig. 8)</button>
+              <button class="btn" id="t4-pre-exog">Exogenous x (No Bias)</button>
+              <button class="btn" id="t4-pre-weak">Weak Instrument Explosion</button>
+              <button class="btn" id="t4-pre-invalid">Invalid IV (Contaminated)</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Instrument Validity Diagnostics</h3>
+            </div>
+
+            <div class="gauge-wrap">
+              <div class="control-label">
+                <span>1. Exogeneity: |cos(θ<sub>z,u</sub>)| (must be ≈ 0)</span>
+                <span id="t4-exog-badge" class="badge green">Light-blind! (0.00)</span>
+              </div>
+              <div class="gauge-bar-bg">
+                <div class="gauge-bar-fill" id="t4-exog-bar" style="width: 2%; background: var(--c-emerald);"></div>
+              </div>
+            </div>
+
+            <div class="gauge-wrap" style="margin-bottom: 0;">
+              <div class="control-label">
+                <span>2. Relevance: |cos(θ<sub>z,x</sub>)| (must be ≠ 0)</span>
+                <span id="t4-rel-badge" class="badge green">Strong (0.89)</span>
+              </div>
+              <div class="gauge-bar-bg">
+                <div class="gauge-bar-fill" id="t4-rel-bar" style="width: 89%; background: var(--c-emerald);"></div>
+              </div>
+            </div>
+
+            <div class="callout" id="t4-diag-note" style="margin-top: 14px;">
+              <strong>Looking through z:</strong> Because z ⊥ u, the error casts zero shadow on z (P<sub>z</sub>u = 0). Therefore P<sub>z</sub>y = β P<sub>z</sub>x, and β̂<sub>IV</sub> = ⟨z, y⟩ / ⟨z, x⟩ recovers β exactly!
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 5: GMM — COMPARING SENSOR READINGS (SPACE OF MOMENTS)
+         ===================================================================== -->
+    <section id="tab5" class="tab-panel">
+      <div class="section-intro">
+        <h2>5. GMM: Comparing Sensor Readings in the Space of Moments</h2>
+        <p>
+          With <span class="math" data-tex="L = 2">L = 2</span> sensors (instruments) and <span class="math" data-tex="k = 1">k = 1</span> parameter, the model's possible readings form a line <span class="math" data-tex="\operatorname{col}(D) = \{Db\}">col(D) = {Db}</span> in <span class="math" data-tex="\mathbb{R}^2">ℝ²</span>.
+          GMM minimizes <span class="math" data-tex="\|m - Db\|_W^2 = \bar{g}(b)' W \bar{g}(b)">‖m - Db‖_W² = ḡ(b)'Wḡ(b)</span>, discounting noisier sensors via the weighting matrix <span class="math" data-tex="W">W</span>.
+        </p>
+      </div>
+
+      <div class="lab-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Figure 9: Projection in Moment Space ℝ<sup>L</sup></h3>
+            <button class="btn" id="t5-reset">Reset to Fig. 9</button>
+          </div>
+          <div class="canvas-container">
+            <canvas id="canvas-t5"></canvas>
+          </div>
+          <div class="canvas-hint">
+            <span>Drag wall readings <strong>m = (1/n)Z'y</strong> (blue) or regressor readings <strong>D = (1/n)Z'X</strong> (gray).</span>
+          </div>
+          <div class="legend-strip">
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-slate);"></span>Equal Weights (W = I)</span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-amber);"></span>W-Ellipses</span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-emerald);"></span>Dβ̂<sub>GMM</sub></span>
+            <span class="legend-item"><span class="legend-dot" style="background: var(--c-crimson);"></span>Miss Vector ḡ(β̂)</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Weighting Matrix W Controls</h3>
+            </div>
+            <div class="btn-row" id="t5-w-presets" style="margin-bottom: 12px;">
+              <button class="btn" data-w="eye">Equal (W = I)</button>
+              <button class="btn amber active" data-w="noisy2">Noisy Sensor 2 (Fig. 9)</button>
+              <button class="btn" data-w="noisy1">Noisy Sensor 1</button>
+              <button class="btn" data-w="custom">Custom W</button>
+            </div>
+
+            <div id="t5-custom-w" style="display: none; padding-top: 8px; border-top: 1px solid var(--border); margin-bottom: 12px;">
+              <div class="control-group">
+                <div class="control-label"><span>Weight on Sensor 1 (w₁)</span><span class="control-val" id="t5-w1-val">1.00</span></div>
+                <input type="range" id="t5-w1" min="0.1" max="3.0" step="0.05" value="1.0" />
+              </div>
+              <div class="control-group">
+                <div class="control-label"><span>Weight on Sensor 2 (w₂)</span><span class="control-val" id="t5-w2-val">0.25</span></div>
+                <input type="range" id="t5-w2" min="0.1" max="3.0" step="0.05" value="0.25" />
+              </div>
+              <div class="control-group">
+                <div class="control-label"><span>Off-diagonal correlation ρ<sub>W</sub></span><span class="control-val" id="t5-wrho-val">0.00</span></div>
+                <input type="range" id="t5-wrho" min="-0.8" max="0.8" step="0.05" value="0.0" />
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Sample size n (for Hansen J-test)</span>
+                <span class="control-val" id="t5-n-val">4</span>
+              </div>
+              <input type="range" id="t5-n" min="1" max="30" step="1" value="4" />
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">GMM Estimates &amp; Hansen J-Test</h3>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <div class="m-label">β̂<sub>W=I</sub> (Equal)</div>
+                <div class="m-value" id="t5-b-eye">0.85</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">β̂<sub>GMM</sub> (Weighted)</div>
+                <div class="m-value" style="color: var(--c-emerald);" id="t5-b-gmm">0.72</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">Miss on Sensor 1 (ḡ₁)</div>
+                <div class="m-value" id="t5-g1">-0.15</div>
+              </div>
+              <div class="metric-box">
+                <div class="m-label">Miss on Sensor 2 (ḡ₂)</div>
+                <div class="m-value" id="t5-g2">+1.78</div>
+              </div>
+            </div>
+
+            <div class="metric-box" style="margin-top: 10px;">
+              <div class="control-label" style="margin-bottom: 4px;">
+                <span>Hansen J = n · ḡ' W ḡ  (df = L − k = 1)</span>
+                <span id="t5-j-badge" class="badge green">Not Rejected</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700;">
+                <span id="t5-j-val">J = 3.26</span>
+                <span id="t5-p-val">p = 0.071</span>
+              </div>
+              <div class="gauge-bar-bg">
+                <div class="gauge-bar-fill" id="t5-j-bar" style="width: 45%; background: var(--c-amber);"></div>
+              </div>
+              <div class="m-sub" style="margin-top: 4px;">Critical value at 5% level: χ²<sub>1, 0.95</sub> = 3.84. If J &gt; 3.84, overidentifying restrictions are rejected.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 6: UNIFIED VIEW — ONE SINGLE IDEA
+         ===================================================================== -->
+    <section id="tab6" class="tab-panel">
+      <div class="section-intro">
+        <h2>6. Summary: One Single Idea</h2>
+        <p>
+          All linear estimators—OLS, GLS, IV, 2SLS, and GMM—are close geometric relatives. They all project the data vector onto a subspace; the only thing that changes from one estimator to the next is the inner product matrix <span class="math" data-tex="A">A</span> used to measure distance.
+        </p>
+      </div>
+
+      <div class="master-eq-banner">
+        <div class="eq-kicker">The Unifying Master Equation</div>
+        <div class="eq-main">
+          <span class="math" data-tex="\hat{\beta} \;=\; \arg\min_{b}\; (y - Xb)' A (y - Xb) \;\Longleftrightarrow\; X' A (y - X\hat{\beta}) = 0 \;\Longleftrightarrow\; \hat{\beta} = (X' A X)^{-1} X' A y">
+            β̂ = argmin_b (y − Xb)' A (y − Xb)  ⟺  X'A(y − Xβ̂) = 0  ⟺  β̂ = (X'AX)⁻¹ X'Ay
+          </span>
+        </div>
+        <div class="eq-sub">
+          Each estimator is a judge, and each judge is an inner product. Click any row below to jump directly to its interactive laboratory.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Master Comparison Table (Click any row to explore)</h3>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Estimator</th>
+                <th>Matrix A</th>
+                <th>Orthogonality Condition</th>
+                <th>Paint / Wall Story Judge</th>
+                <th>Econometric Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="clickable-row" data-goto="tab3" data-sub="ols">
+                <td><strong style="color: var(--c-blue);">OLS</strong></td>
+                <td class="mono">I</td>
+                <td class="mono">X' û = 0</td>
+                <td><strong>The App:</strong> treats every color channel equally</td>
+                <td>Exogenous regressors (E[xu] = 0), spherical errors</td>
+              </tr>
+              <tr class="clickable-row" data-goto="tab3" data-sub="gls">
+                <td><strong style="color: var(--c-emerald);">GLS</strong></td>
+                <td class="mono">Ω⁻¹</td>
+                <td class="mono">X' Ω⁻¹ û = 0</td>
+                <td><strong>The Careful Judge:</strong> discounts channels the camera reads poorly</td>
+                <td>Heteroskedastic or correlated errors; down-weights noisy directions</td>
+              </tr>
+              <tr class="clickable-row" data-goto="tab4">
+                <td><strong style="color: var(--c-violet);">IV (L = k)</strong></td>
+                <td class="mono">P<sub>Z</sub> (oblique)</td>
+                <td class="mono">Z' û = 0</td>
+                <td><strong>A Light-Blind Sensor:</strong> cannot see the room light's tint</td>
+                <td>Endogeneity (u ⊄ x), but valid instrument (u ⊥ z, z ⊄ x)</td>
+              </tr>
+              <tr class="clickable-row" data-goto="tab4">
+                <td><strong style="color: var(--c-violet);">2SLS (L &gt; k)</strong></td>
+                <td class="mono">P<sub>Z</sub> = Z(Z'Z)⁻¹Z'</td>
+                <td class="mono">X̂' û = 0, X̂ = P<sub>Z</sub>X</td>
+                <td><strong>The Blind Judge:</strong> looks only through the sensors (seminorm)</td>
+                <td>More instruments than regressors; projects onto col(Z) first</td>
+              </tr>
+              <tr class="clickable-row" data-goto="tab5">
+                <td><strong style="color: var(--c-amber);">GMM</strong></td>
+                <td class="mono">Z W Z'</td>
+                <td class="mono">D' W ḡ(β̂) = 0</td>
+                <td><strong>Multiple Weighted Sensors:</strong> trusts reliable sensors more</td>
+                <td>W-distance in moment space ℝ<sup>L</sup>; W = Σ̂⁻¹ is efficient</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">The Logical Thread, in Six Steps</h3>
+        </div>
+        <div class="roadmap-grid">
+          <div class="roadmap-step">
+            <h4><span class="step-num">1</span>Vector Space</h4>
+            <p>Data (y, columns of X and Z) are vectors in ℝⁿ. Adding or rescaling variables keeps you inside ℝⁿ.</p>
+          </div>
+          <div class="roadmap-step">
+            <h4><span class="step-num">2</span>Subspace &amp; Span</h4>
+            <p>All possible linear predictions {Xb} form the column space col(X), automatically closed under addition and scaling.</p>
+          </div>
+          <div class="roadmap-step">
+            <h4><span class="step-num">3</span>Basis &amp; Dimension</h4>
+            <p>Linearly independent columns guarantee unique coefficients (identification): k parameters, n − k degrees of freedom.</p>
+          </div>
+          <div class="roadmap-step">
+            <h4><span class="step-num">4</span>Inner Product</h4>
+            <p>Defines length, distance, angle, and orthogonality. Choosing A is an econometric choice—best when matched to the noise.</p>
+          </div>
+          <div class="roadmap-step">
+            <h4><span class="step-num">5</span>Projection</h4>
+            <p>The closest point in col(X) has an A-orthogonal residual, turning minimization into linear normal equations.</p>
+          </div>
+          <div class="roadmap-step">
+            <h4><span class="step-num">6</span>OLS, GLS, IV, 2SLS, GMM</h4>
+            <p>One single projection problem with different subspaces and notions of distance—all unified in one formula.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>The Geometry of Regressions — Interactive Lab · Self-contained HTML5/Canvas educational web app</span>
+    <span>Based on Antonio Cozzolino, <em>The Geometry of Regressions</em></span>
+  </footer>
+
+  <!-- =======================================================================
+       APPLICATION JAVASCRIPT (Linear Algebra, Canvas Engine, 6 Interactive Labs)
+       ======================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ---------------------------------------------------------------------
+         0. OPTIONAL KATEX MATH RENDERING (GRACEFUL OFFLINE FALLBACK)
+         --------------------------------------------------------------------- */
+      window.renderAllMath = function () {
+        if (!window.katex) return;
+        document.querySelectorAll('.math[data-tex]').forEach(el => {
+          try {
+            window.katex.render(el.getAttribute('data-tex'), el, {
+              throwOnError: false,
+              displayMode: false
+            });
+          } catch (e) {
+            // Keep clean Unicode fallback text
+          }
+        });
+      };
+
+      /* ---------------------------------------------------------------------
+         1. LINEAR ALGEBRA & STATISTICS UTILITIES (2D / 2x2 SPD)
+         --------------------------------------------------------------------- */
+      const LA = {
+        add: (u, v) => [u[0] + v[0], u[1] + v[1]],
+        sub: (u, v) => [u[0] - v[0], u[1] - v[1]],
+        scale: (u, s) => [u[0] * s, u[1] * s],
+        dot: (u, v) => u[0] * v[0] + u[1] * v[1],
+        norm: (u) => Math.hypot(u[0], u[1]),
+        dist: (u, v) => Math.hypot(u[0] - v[0], u[1] - v[1]),
+        clamp: (x, lo, hi) => Math.max(lo, Math.min(hi, x)),
+
+        // 2x2 matrix * 2-vector: A = [[a, b], [c, d]]
+        matVec: (A, v) => [
+          A[0][0] * v[0] + A[0][1] * v[1],
+          A[1][0] * v[0] + A[1][1] * v[1]
+        ],
+
+        // Weighted inner product <u, v>_A = u' A v
+        innerA: (A, u, v) => {
+          const Av = LA.matVec(A, v);
+          return u[0] * Av[0] + u[1] * Av[1];
+        },
+
+        normA: (A, v) => Math.sqrt(Math.max(0, LA.innerA(A, v, v))),
+        distA: (A, u, v) => LA.normA(A, LA.sub(u, v)),
+
+        angleADeg: (A, u, v) => {
+          const nu = LA.normA(A, u);
+          const nv = LA.normA(A, v);
+          if (nu < 1e-10 || nv < 1e-10) return 0;
+          const c = LA.clamp(LA.innerA(A, u, v) / (nu * nv), -1, 1);
+          return (Math.acos(c) * 180) / Math.PI;
+        },
+
+        // Construct SPD matrix from eigenvalues (l1, l2) and rotation angle phi (rad)
+        fromEigen: (l1, l2, phiRad) => {
+          const c = Math.cos(phiRad);
+          const s = Math.sin(phiRad);
+          const a = l1 * c * c + l2 * s * s;
+          const b = (l1 - l2) * c * s;
+          const d = l1 * s * s + l2 * c * c;
+          return [[a, b], [b, d]];
+        },
+
+        // Invert 2x2 matrix
+        inv2: (M) => {
+          const det = M[0][0] * M[1][1] - M[0][1] * M[1][0];
+          if (Math.abs(det) < 1e-12) return [[1, 0], [0, 1]];
+          return [
+            [M[1][1] / det, -M[0][1] / det],
+            [-M[1][0] / det, M[0][0] / det]
+          ];
+        },
+
+        // Exact symmetric 2x2 eigendecomposition
+        eigenSym2: (A) => {
+          const a = A[0][0], b = 0.5 * (A[0][1] + A[1][0]), d = A[1][1];
+          const tr = a + d;
+          const disc = Math.sqrt(Math.max(0, (a - d) * (a - d) + 4 * b * b));
+          const l1 = Math.max(1e-8, 0.5 * (tr + disc));
+          const l2 = Math.max(1e-8, 0.5 * (tr - disc));
+          const theta = 0.5 * Math.atan2(2 * b, a - d);
+          const q1 = [Math.cos(theta), Math.sin(theta)];
+          const q2 = [-Math.sin(theta), Math.cos(theta)];
+          return { l1, l2, theta, q1, q2 };
+        },
+
+        // Symmetric square root A^{1/2}
+        sqrtSym2: (A) => {
+          const { l1, l2, theta } = LA.eigenSym2(A);
+          return LA.fromEigen(Math.sqrt(l1), Math.sqrt(l2), theta);
+        },
+
+        // Interpolate matrix between I and M: (1 - t) I + t M
+        lerpFromEye: (M, t) => [
+          [1 + t * (M[0][0] - 1), t * M[0][1]],
+          [t * M[1][0], 1 + t * (M[1][1] - 1)]
+        ],
+
+        // Complementary error function erfc(x) via Abramowitz & Stegun 7.1.26
+        erfc: (x) => {
+          const z = Math.abs(x);
+          const t = 1 / (1 + 0.3275911 * z);
+          const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+          const ans = poly * Math.exp(-z * z);
+          return x >= 0 ? ans : 2 - ans;
+        },
+
+        // Chi-squared(1) upper tail p-value: P(X >= J) = erfc(sqrt(J/2))
+        chi2PValue1: (J) => {
+          if (J <= 0) return 1.0;
+          return LA.erfc(Math.sqrt(J / 2));
+        }
+      };
+
+      // Paper's exact Judge matrices
+      const JUDGES = {
+        app: {
+          name: 'App (A = I)',
+          color: '#475569',
+          A: [[1, 0], [0, 1]]
+        },
+        landlord: {
+          name: 'Landlord',
+          color: '#DC2626',
+          A: [[2.125, 1.875], [1.875, 2.125]] // 4 dd' + 0.25 hh'
+        },
+        student: {
+          name: 'Art Student',
+          color: '#2563EB',
+          A: [[2.125, -1.875], [-1.875, 2.125]] // 0.25 dd' + 4 hh'
+        }
+      };
+
+      const fmt = (n, d = 2) => {
+        if (!Number.isFinite(n)) return '∞';
+        const val = Math.abs(n) < 1e-9 ? 0 : n;
+        return val.toFixed(d);
+      };
+
+      const fmtVec = (v, d = 2) => `(${fmt(v[0], d)}, ${fmt(v[1], d)})`;
+
+      /* ---------------------------------------------------------------------
+         2. HIGH-DPI INTERACTIVE CANVAS ENGINE
+         --------------------------------------------------------------------- */
+      class InteractiveCanvas {
+        constructor(canvasEl, options = {}) {
+          this.canvas = canvasEl;
+          this.ctx = canvasEl.getContext('2d');
+          this.worldBounds = options.bounds || { xMin: -2, xMax: 6, yMin: -2, yMax: 5 };
+          this.handles = [];
+          this.draggingHandle = null;
+          this.hoverHandle = null;
+          this.onDraw = options.onDraw || (() => {});
+          this.width = 600;
+          this.height = 450;
+          this.scale = 60;
+          this.originX = 120;
+          this.originY = 320;
+
+          this._bindEvents();
+          this.resize();
+        }
+
+        resize() {
+          const rect = this.canvas.parentElement.getBoundingClientRect();
+          if (rect.width < 10 || rect.height < 10) return;
+          const dpr = window.devicePixelRatio || 1;
+          this.width = rect.width;
+          this.height = rect.height;
+          this.canvas.width = Math.round(rect.width * dpr);
+          this.canvas.height = Math.round(rect.height * dpr);
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          const b = this.worldBounds;
+          const pad = 28;
+          const spanX = b.xMax - b.xMin;
+          const spanY = b.yMax - b.yMin;
+          this.scale = Math.min((this.width - 2 * pad) / spanX, (this.height - 2 * pad) / spanY);
+          const cx = 0.5 * (b.xMin + b.xMax);
+          const cy = 0.5 * (b.yMin + b.yMax);
+          this.originX = this.width / 2 - cx * this.scale;
+          this.originY = this.height / 2 + cy * this.scale;
+          this.render();
+        }
+
+        toScreen(wx, wy) {
+          return [this.originX + wx * this.scale, this.originY - wy * this.scale];
+        }
+
+        toWorld(sx, sy) {
+          return [(sx - this.originX) / this.scale, (this.originY - sy) / this.scale];
+        }
+
+        setHandles(handles) {
+          this.handles = handles;
+        }
+
+        render() {
+          const ctx = this.ctx;
+          ctx.clearRect(0, 0, this.width, this.height);
+          this.onDraw(this);
+        }
+
+        drawGrid(options = {}) {
+          const ctx = this.ctx;
+          const step = options.step || 1;
+          const [wxMin, wyMax] = this.toWorld(0, 0);
+          const [wxMax, wyMin] = this.toWorld(this.width, this.height);
+
+          // Minor gridlines
+          ctx.save();
+          ctx.strokeStyle = '#ECE8DF';
+          ctx.lineWidth = 1;
+          for (let x = Math.ceil(wxMin / step) * step; x <= wxMax; x += step) {
+            const [sx] = this.toScreen(x, 0);
+            ctx.beginPath();
+            ctx.moveTo(sx, 0);
+            ctx.lineTo(sx, this.height);
+            ctx.stroke();
+          }
+          for (let y = Math.ceil(wyMin / step) * step; y <= wyMax; y += step) {
+            const [, sy] = this.toScreen(0, y);
+            ctx.beginPath();
+            ctx.moveTo(0, sy);
+            ctx.lineTo(this.width, sy);
+            ctx.stroke();
+          }
+
+          // Coordinate axes
+          ctx.strokeStyle = '#94A3B8';
+          ctx.lineWidth = 1.4;
+          const [ox, oy] = this.toScreen(0, 0);
+          ctx.beginPath();
+          ctx.moveTo(0, oy);
+          ctx.lineTo(this.width, oy);
+          ctx.moveTo(ox, 0);
+          ctx.lineTo(ox, this.height);
+          ctx.stroke();
+
+          // Tick labels
+          ctx.fillStyle = '#94A3B8';
+          ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          for (let x = Math.ceil(wxMin / step) * step; x <= wxMax; x += step) {
+            if (Math.abs(x) < 1e-6) continue;
+            const [sx] = this.toScreen(x, 0);
+            ctx.fillText(String(Math.round(x * 10) / 10), sx, LA.clamp(oy + 5, 4, this.height - 16));
+          }
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          for (let y = Math.ceil(wyMin / step) * step; y <= wyMax; y += step) {
+            if (Math.abs(y) < 1e-6) continue;
+            const [, sy] = this.toScreen(0, y);
+            ctx.fillText(String(Math.round(y * 10) / 10), LA.clamp(ox - 6, 22, this.width - 4), sy);
+          }
+
+          // Axis captions
+          ctx.fillStyle = '#64748B';
+          ctx.font = '600 11.5px -apple-system, BlinkMacSystemFont, sans-serif';
+          if (options.xLabel) {
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(options.xLabel, this.width - 10, LA.clamp(oy - 6, 18, this.height - 8));
+          }
+          if (options.yLabel) {
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(options.yLabel, LA.clamp(ox + 8, 8, this.width - 110), 10);
+          }
+          ctx.restore();
+        }
+
+        drawLineThrough(p1, p2, color = '#94A3B8', width = 2, dash = []) {
+          const dx = p2[0] - p1[0];
+          const dy = p2[1] - p1[1];
+          const len = Math.hypot(dx, dy);
+          if (len < 1e-8) return;
+          const ux = dx / len, uy = dy / len;
+          const ext = 30;
+          const [x1, y1] = this.toScreen(p1[0] - ux * ext, p1[1] - uy * ext);
+          const [x2, y2] = this.toScreen(p1[0] + ux * ext, p1[1] + uy * ext);
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.setLineDash(dash);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        drawSegment(p1, p2, color = '#475569', width = 2, dash = []) {
+          const [x1, y1] = this.toScreen(p1[0], p1[1]);
+          const [x2, y2] = this.toScreen(p2[0], p2[1]);
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.setLineDash(dash);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        drawArrow(from, to, color = '#2563EB', width = 2.4, dash = []) {
+          const [x1, y1] = this.toScreen(from[0], from[1]);
+          const [x2, y2] = this.toScreen(to[0], to[1]);
+          const dx = x2 - x1, dy = y2 - y1;
+          const len = Math.hypot(dx, dy);
+          if (len < 2) return;
+          const ang = Math.atan2(dy, dx);
+          const headLen = Math.min(11, Math.max(7, len * 0.22));
+          const ctx = this.ctx;
+
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = width;
+          ctx.lineCap = 'round';
+          ctx.setLineDash(dash);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2 - Math.cos(ang) * (headLen * 0.65), y2 - Math.sin(ang) * (headLen * 0.65));
+          ctx.stroke();
+
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(x2, y2);
+          ctx.lineTo(x2 - headLen * Math.cos(ang - 0.38), y2 - headLen * Math.sin(ang - 0.38));
+          ctx.lineTo(x2 - headLen * Math.cos(ang + 0.38), y2 - headLen * Math.sin(ang + 0.38));
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        drawPoint(p, color = '#1E293B', radius = 4.5, hollow = false) {
+          const [sx, sy] = this.toScreen(p[0], p[1]);
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+          if (hollow) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = color;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        drawHandle(p, color = '#2563EB', isActive = false) {
+          const [sx, sy] = this.toScreen(p[0], p[1]);
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(sx, sy, isActive ? 10 : 7.5, 0, Math.PI * 2);
+          ctx.fillStyle = color + '26';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(sx, sy, isActive ? 5.5 : 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fill();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2.4;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        drawLabel(text, worldPos, color = '#1E293B', offset = [10, -10], font = '600 12.5px -apple-system, BlinkMacSystemFont, sans-serif') {
+          const [sx, sy] = this.toScreen(worldPos[0], worldPos[1]);
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.font = font;
+          const tx = sx + offset[0];
+          const ty = sy + offset[1];
+          const metrics = ctx.measureText(text);
+          const padX = 4, padY = 2;
+          ctx.fillStyle = 'rgba(252, 251, 249, 0.86)';
+          ctx.fillRect(tx - padX, ty - 11 - padY, metrics.width + 2 * padX, 14 + 2 * padY);
+          ctx.fillStyle = color;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(text, tx, ty);
+          ctx.restore();
+        }
+
+        drawRightAngle(vertex, dir1, dir2, color = '#475569', sizePx = 11) {
+          const n1 = LA.norm(dir1), n2 = LA.norm(dir2);
+          if (n1 < 1e-6 || n2 < 1e-6) return;
+          const u1 = [dir1[0] / n1, dir1[1] / n1];
+          const u2 = [dir2[0] / n2, dir2[1] / n2];
+          const s = sizePx / this.scale;
+          const p1 = [vertex[0] + u1[0] * s, vertex[1] + u1[1] * s];
+          const p2 = [vertex[0] + (u1[0] + u2[0]) * s, vertex[1] + (u1[1] + u2[1]) * s];
+          const p3 = [vertex[0] + u2[0] * s, vertex[1] + u2[1] * s];
+          const [x1, y1] = this.toScreen(p1[0], p1[1]);
+          const [x2, y2] = this.toScreen(p2[0], p2[1]);
+          const [x3, y3] = this.toScreen(p3[0], p3[1]);
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.lineTo(x3, y3);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Draw ellipse { w : (w - center)' A (w - center) = radius^2 }, optionally transformed by M
+        drawEllipseA(center, A, radius, color, lineWidth = 1.8, dash = [], transformM = null) {
+          if (radius < 1e-6) return;
+          const { l1, l2, q1, q2 } = LA.eigenSym2(A);
+          const a = radius / Math.sqrt(l1);
+          const b = radius / Math.sqrt(l2);
+          const steps = 96;
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = lineWidth;
+          ctx.setLineDash(dash);
+          ctx.beginPath();
+          for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * Math.PI * 2;
+            const ct = Math.cos(t), st = Math.sin(t);
+            let wx = center[0] + a * ct * q1[0] + b * st * q2[0];
+            let wy = center[1] + a * ct * q1[1] + b * st * q2[1];
+            if (transformM) {
+              const tw = LA.matVec(transformM, [wx, wy]);
+              wx = tw[0]; wy = tw[1];
+            }
+            const [sx, sy] = this.toScreen(wx, wy);
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        _getPointerPos(e) {
+          const rect = this.canvas.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          return [clientX - rect.left, clientY - rect.top];
+        }
+
+        _hitTest(sx, sy) {
+          let best = null;
+          let bestDist = 20;
+          for (const h of this.handles) {
+            const pos = h.getPos();
+            const [hx, hy] = this.toScreen(pos[0], pos[1]);
+            const d = Math.hypot(sx - hx, sy - hy);
+            if (d < bestDist) {
+              bestDist = d;
+              best = h;
+            }
+          }
+          return best;
+        }
+
+        _bindEvents() {
+          const onDown = (e) => {
+            const [sx, sy] = this._getPointerPos(e);
+            const hit = this._hitTest(sx, sy);
+            if (hit) {
+              this.draggingHandle = hit;
+              this.canvas.style.cursor = 'grabbing';
+              e.preventDefault();
+            }
+          };
+
+          const onMove = (e) => {
+            const [sx, sy] = this._getPointerPos(e);
+            if (this.draggingHandle) {
+              e.preventDefault();
+              const [wx, wy] = this.toWorld(sx, sy);
+              this.draggingHandle.setPos(wx, wy);
+              return;
+            }
+            const hit = this._hitTest(sx, sy);
+            if (hit !== this.hoverHandle) {
+              this.hoverHandle = hit;
+              this.canvas.style.cursor = hit ? 'grab' : 'default';
+              this.render();
+            }
+          };
+
+          const onUp = () => {
+            if (this.draggingHandle) {
+              this.draggingHandle = null;
+              this.canvas.style.cursor = this.hoverHandle ? 'grab' : 'default';
+              this.render();
+            }
+          };
+
+          this.canvas.addEventListener('mousedown', onDown);
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onUp);
+
+          this.canvas.addEventListener('touchstart', onDown, { passive: false });
+          window.addEventListener('touchmove', onMove, { passive: false });
+          window.addEventListener('touchend', onUp);
+        }
+      }
+
+      /* ---------------------------------------------------------------------
+         3. TAB 1: VECTOR SPACES, SUBSPACES, SPAN & MULTICOLLINEARITY
+         --------------------------------------------------------------------- */
+      const t1State = {
+        mode: 'subspace',
+        // Mode A
+        m: 0.5,
+        c: 0.0,
+        alpha: -1.5,
+        ux: 1.2,
+        vx: 2.0,
+        // Mode B
+        v1: [2.0, 0.5],
+        v2: [0.6, 1.8],
+        b1: 1.5,
+        b2: 1.0,
+        orangeOn: false,
+        tShift: 0.6
+      };
+
+      const canvasT1A = new InteractiveCanvas(document.getElementById('canvas-t1a'), {
+        bounds: { xMin: -3.5, xMax: 5.5, yMin: -2.5, yMax: 5.0 },
+        onDraw: (ic) => {
+          ic.drawGrid({ xLabel: 'x₁', yLabel: 'x₂' });
+          const { m, c, alpha, ux, vx } = t1State;
+          const u = [ux, m * ux + c];
+          const v = [vx, m * vx + c];
+          const sum = LA.add(u, v);
+          const scaled = LA.scale(u, alpha);
+          const isSubspace = Math.abs(c) < 1e-6;
+
+          // Draw line L
+          ic.drawLineThrough([0, c], [1, m + c], isSubspace ? '#059669' : '#94A3B8', 2.4);
+          ic.drawLabel(isSubspace ? 'Subspace S (c = 0)' : `Shifted Line A (c = ${fmt(c, 1)})`, [3.6, m * 3.6 + c], isSubspace ? '#059669' : '#475569', [8, -10]);
+
+          // Origin marker
+          ic.drawPoint([0, 0], isSubspace ? '#059669' : '#DC2626', 5, !isSubspace);
+          if (!isSubspace) {
+            ic.drawLabel('0 ∉ A', [0, 0], '#DC2626', [8, 14]);
+          }
+
+          // Dashed parallelogram for u + v
+          ic.drawSegment(u, sum, '#94A3B8', 1.4, [5, 5]);
+          ic.drawSegment(v, sum, '#94A3B8', 1.4, [5, 5]);
+
+          // Vectors u, v, u+v, alpha*u
+          ic.drawArrow([0, 0], u, '#2563EB', 2.4);
+          ic.drawArrow([0, 0], v, '#059669', 2.4);
+          ic.drawArrow([0, 0], sum, isSubspace ? '#059669' : '#DC2626', 2.6);
+          ic.drawPoint(scaled, isSubspace ? '#64748B' : '#DC2626', 5);
+
+          // Labels
+          ic.drawLabel('u', u, '#2563EB', [8, -10]);
+          ic.drawLabel('v', v, '#059669', [8, -10]);
+          ic.drawLabel(isSubspace ? 'u + v ∈ S' : 'u + v ∉ A', sum, isSubspace ? '#059669' : '#DC2626', [8, -8]);
+          ic.drawLabel(`${fmt(alpha, 1)}·u`, scaled, isSubspace ? '#475569' : '#DC2626', [8, 12]);
+
+          // Handles
+          ic.drawHandle(u, '#2563EB', ic.hoverHandle && ic.hoverHandle.id === 'u');
+          ic.drawHandle(v, '#059669', ic.hoverHandle && ic.hoverHandle.id === 'v');
+        }
+      });
+
+      canvasT1A.setHandles([
+        {
+          id: 'u',
+          getPos: () => [t1State.ux, t1State.m * t1State.ux + t1State.c],
+          setPos: (wx) => { t1State.ux = LA.clamp(wx, -3, 4.5); updateT1A(); }
+        },
+        {
+          id: 'v',
+          getPos: () => [t1State.vx, t1State.m * t1State.vx + t1State.c],
+          setPos: (wx) => { t1State.vx = LA.clamp(wx, -3, 4.5); updateT1A(); }
+        }
+      ]);
+
+      function updateT1A() {
+        const { m, c, alpha, ux, vx } = t1State;
+        const u = [ux, m * ux + c];
+        const v = [vx, m * vx + c];
+        const sum = LA.add(u, v);
+        const isSubspace = Math.abs(c) < 1e-6;
+
+        document.getElementById('t1a-c-val').textContent = fmt(c);
+        document.getElementById('t1a-m-val').textContent = fmt(m);
+        document.getElementById('t1a-alpha-val').textContent = fmt(alpha);
+        document.getElementById('t1a-u-read').textContent = fmtVec(u);
+        document.getElementById('t1a-v-read').textContent = fmtVec(v);
+        document.getElementById('t1a-sum-read').textContent = fmtVec(sum);
+
+        const badge = document.getElementById('t1a-status-badge');
+        badge.className = isSubspace ? 'badge green' : 'badge red';
+        badge.textContent = isSubspace ? 'Subspace: Closed (0 ∈ S)' : 'Not a Subspace (0 ∉ A)';
+
+        document.getElementById('t1a-sum-check').textContent = isSubspace ? 'On line S ✓' : `Falls off A by ${fmt(Math.abs(c))} ✗`;
+        document.getElementById('t1a-sum-check').style.color = isSubspace ? 'var(--c-emerald)' : 'var(--c-crimson)';
+        document.getElementById('t1a-orig-read').textContent = isSubspace ? '0 ∈ S' : '0 ∉ A';
+        document.getElementById('t1a-orig-sub').textContent = isSubspace ? 'No paint allowed' : 'Origin excluded';
+
+        canvasT1A.render();
+      }
+
+      const canvasT1B = new InteractiveCanvas(document.getElementById('canvas-t1b'), {
+        bounds: { xMin: -2.5, xMax: 6.5, yMin: -2.0, yMax: 5.5 },
+        onDraw: (ic) => {
+          ic.drawGrid({ xLabel: 'Channel 1 (Red)', yLabel: 'Channel 2 (Green)' });
+          const { v1, v2, b1, b2, orangeOn } = t1State;
+          const det = v1[0] * v2[1] - v1[1] * v2[0];
+          const collinear = Math.abs(det) < 0.12;
+
+          // Draw span grid (if independent) or single line (if collinear)
+          if (!collinear) {
+            for (let k = -4; k <= 5; k++) {
+              const p1 = LA.scale(v1, k);
+              ic.drawLineThrough(p1, LA.add(p1, v2), 'rgba(37, 99, 235, 0.10)', 1);
+              const p2 = LA.scale(v2, k);
+              ic.drawLineThrough(p2, LA.add(p2, v1), 'rgba(217, 119, 6, 0.12)', 1);
+            }
+          } else {
+            ic.drawLineThrough([0, 0], v1, 'rgba(220, 38, 38, 0.25)', 5);
+          }
+
+          const p1 = LA.scale(v1, b1);
+          const p2 = LA.scale(v2, b2);
+          const w = LA.add(p1, p2);
+
+          // Dashed parallelogram construction
+          ic.drawArrow([0, 0], p1, 'rgba(220, 38, 38, 0.45)', 1.8, [5, 4]);
+          ic.drawArrow(p1, w, 'rgba(217, 119, 6, 0.55)', 1.8, [5, 4]);
+
+          // Base tubes v1 (Red), v2 (Yellow/Amber), optional v3 (Orange)
+          ic.drawArrow([0, 0], v1, '#DC2626', 2.8);
+          ic.drawArrow([0, 0], v2, '#D97706', 2.8);
+          if (orangeOn) {
+            const v3 = LA.add(v1, v2);
+            ic.drawArrow([0, 0], v3, '#EA580C', 2.4, [6, 4]);
+            ic.drawLabel('v₃ = v₁ + v₂ (Orange)', v3, '#EA580C', [8, -10]);
+          }
+
+          // Resulting linear combination w
+          ic.drawArrow([0, 0], w, '#1E293B', 3.0);
+
+          // Labels
+          ic.drawLabel('v₁ (Red)', v1, '#DC2626', [8, 14]);
+          ic.drawLabel('v₂ (Yellow)', v2, '#D97706', [8, -10]);
+          ic.drawLabel(`w = ${fmt(b1, 1)}v₁ + ${fmt(b2, 1)}v₂`, w, '#1E293B', [10, -8]);
+
+          // Handles
+          ic.drawHandle(v1, '#DC2626', ic.hoverHandle && ic.hoverHandle.id === 'v1');
+          ic.drawHandle(v2, '#D97706', ic.hoverHandle && ic.hoverHandle.id === 'v2');
+        }
+      });
+
+      canvasT1B.setHandles([
+        {
+          id: 'v1',
+          getPos: () => t1State.v1,
+          setPos: (wx, wy) => { t1State.v1 = [LA.clamp(wx, -2, 5), LA.clamp(wy, -1.5, 4.5)]; updateT1B(); }
+        },
+        {
+          id: 'v2',
+          getPos: () => t1State.v2,
+          setPos: (wx, wy) => { t1State.v2 = [LA.clamp(wx, -2, 5), LA.clamp(wy, -1.5, 4.5)]; updateT1B(); }
+        }
+      ]);
+
+      function updateT1B() {
+        const { v1, v2, b1, b2, orangeOn, tShift } = t1State;
+        const w = LA.add(LA.scale(v1, b1), LA.scale(v2, b2));
+        const det = v1[0] * v2[1] - v1[1] * v2[0];
+        const collinear = Math.abs(det) < 0.12;
+        const k = orangeOn ? 3 : 2;
+        const rank = collinear ? 1 : 2;
+
+        document.getElementById('t1b-b1-val').textContent = fmt(b1);
+        document.getElementById('t1b-b2-val').textContent = fmt(b2);
+        document.getElementById('t1b-t-val').textContent = fmt(tShift);
+        document.getElementById('t1b-k').textContent = String(k);
+        document.getElementById('t1b-rank').textContent = String(rank);
+        document.getElementById('t1b-det').textContent = fmt(det);
+        document.getElementById('t1b-w-coords').textContent = `w = ${fmtVec(w)}`;
+
+        const badge = document.getElementById('t1b-rank-badge');
+        if (rank < k) {
+          badge.className = 'badge red';
+          badge.textContent = `Linearly Dependent: rank(X) = ${rank} < k = ${k}`;
+        } else {
+          badge.className = 'badge green';
+          badge.textContent = `Full Rank: rank(X) = ${rank} = k`;
+        }
+
+        // Mixed color swatch approximation (mapping R/G channels smoothly to visible paint hue)
+        const r = Math.round(LA.clamp(80 + w[0] * 48, 25, 245));
+        const g = Math.round(LA.clamp(55 + w[1] * 55, 25, 235));
+        const b = Math.round(LA.clamp(45 + Math.max(0, 1.5 - 0.15 * (w[0] + w[1])) * 30, 20, 110));
+        document.getElementById('t1b-swatch').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+        if (orangeOn) {
+          document.getElementById('t1b-orange-controls').style.display = 'block';
+          const nb1 = b1 - tShift, nb2 = b2 - tShift, nb3 = tShift;
+          document.getElementById('t1b-equiv-recipes').innerHTML =
+            `Recipe 1: (${fmt(b1, 1)}, ${fmt(b2, 1)}, 0.0) → w = ${fmtVec(w)}<br>` +
+            `Recipe 2: (${fmt(nb1, 1)}, ${fmt(nb2, 1)}, ${fmt(nb3, 1)}) → w = ${fmtVec(w)}`;
+          document.getElementById('t1b-recipe-desc').textContent = 'Non-unique recipe in ℝ³ → Same color in ℝ²';
+        } else {
+          document.getElementById('t1b-orange-controls').style.display = 'none';
+          document.getElementById('t1b-recipe-desc').textContent = collinear
+            ? 'Collinear tubes! Span collapsed to a 1D line'
+            : `Unique recipe (${fmt(b1, 1)}, ${fmt(b2, 1)}) in ℝ² → Color in ℝ²`;
+        }
+
+        canvasT1B.render();
+      }
+
+      /* ---------------------------------------------------------------------
+         4. TAB 2: INNER PRODUCTS — ONE SPACE, MANY DISTANCES
+         --------------------------------------------------------------------- */
+      const t2State = {
+        judge: 'landlord',
+        u: [3.0, 1.0],
+        v: [1.0, 2.0],
+        l1: 4.0,
+        l2: 0.25,
+        phiDeg: 45
+      };
+
+      function getT2Matrix() {
+        if (t2State.judge === 'custom') {
+          return LA.fromEigen(t2State.l1, t2State.l2, (t2State.phiDeg * Math.PI) / 180);
+        }
+        return JUDGES[t2State.judge].A;
+      }
+
+      function getT2JudgeName() {
+        if (t2State.judge === 'custom') return 'Custom A';
+        return JUDGES[t2State.judge].name;
+      }
+
+      const canvasT2Left = new InteractiveCanvas(document.getElementById('canvas-t2-left'), {
+        bounds: { xMin: -1.8, xMax: 4.5, yMin: -1.8, yMax: 4.2 },
+        onDraw: (ic) => {
+          ic.drawGrid({ xLabel: 'Red channel', yLabel: 'Green channel' });
+          const A = getT2Matrix();
+          const { u, v } = t2State;
+
+          // Unit ellipse {w : w'Aw = 1}
+          ic.drawEllipseA([0, 0], A, 1.0, '#D97706', 2.0, [5, 4]);
+          // Euclidean unit circle for reference
+          ic.drawEllipseA([0, 0], [[1, 0], [0, 1]], 1.0, '#CBD5E1', 1.2, [3, 3]);
+
+          // Pure red (1,0) & pure green (0,1)
+          ic.drawArrow([0, 0], [1, 0], '#94A3B8', 1.8);
+          ic.drawArrow([0, 0], [0, 1], '#94A3B8', 1.8);
+          ic.drawRightAngle([0, 0], [1, 0], [0, 1], '#94A3B8', 9);
+          ic.drawLabel('red', [1, 0], '#64748B', [4, 14]);
+          ic.drawLabel('green', [0, 1], '#64748B', [-36, -6]);
+
+          // Distance dashed segment
+          ic.drawSegment(u, v, '#7C3AED', 1.8, [5, 5]);
+          const mid = [0.5 * (u[0] + v[0]), 0.5 * (u[1] + v[1])];
+          ic.drawLabel(`d = ${fmt(LA.dist(u, v))}`, mid, '#7C3AED', [6, -6]);
+
+          // u and v
+          ic.drawArrow([0, 0], u, '#DC2626', 2.6);
+          ic.drawArrow([0, 0], v, '#059669', 2.6);
+          ic.drawLabel(`u ${fmtVec(u, 1)}`, u, '#DC2626', [8, 12]);
+          ic.drawLabel(`v ${fmtVec(v, 1)}`, v, '#059669', [8, -8]);
+
+          ic.drawHandle(u, '#DC2626', ic.hoverHandle && ic.hoverHandle.id === 'u');
+          ic.drawHandle(v, '#059669', ic.hoverHandle && ic.hoverHandle.id === 'v');
+        }
+      });
+
+      const canvasT2Right = new InteractiveCanvas(document.getElementById('canvas-t2-right'), {
+        bounds: { xMin: -2.2, xMax: 6.5, yMin: -2.2, yMax: 6.2 },
+        onDraw: (ic) => {
+          ic.drawGrid({ xLabel: 'Judge axis 1', yLabel: 'Judge axis 2' });
+          const A = getT2Matrix();
+          const Ahalf = LA.sqrtSym2(A);
+          const uT = LA.matVec(Ahalf, t2State.u);
+          const vT = LA.matVec(Ahalf, t2State.v);
+          const e1T = LA.matVec(Ahalf, [1, 0]);
+          const e2T = LA.matVec(Ahalf, [0, 1]);
+
+          // In A^{1/2} coordinates, the judge's unit ball is the TRUE unit circle!
+          ic.drawEllipseA([0, 0], [[1, 0], [0, 1]], 1.0, '#D97706', 2.0, [5, 4]);
+
+          // Transformed pure red & pure green
+          ic.drawArrow([0, 0], e1T, '#94A3B8', 1.8);
+          ic.drawArrow([0, 0], e2T, '#94A3B8', 1.8);
+          ic.drawLabel('red', e1T, '#64748B', [6, 12]);
+          ic.drawLabel('green', e2T, '#64748B', [-24, -10]);
+
+          // Distance dashed segment
+          ic.drawSegment(uT, vT, '#7C3AED', 1.8, [5, 5]);
+          const midT = [0.5 * (uT[0] + vT[0]), 0.5 * (uT[1] + vT[1])];
+          ic.drawLabel(`d_A = ${fmt(LA.distA(A, t2State.u, t2State.v))}`, midT, '#7C3AED', [6, -6]);
+
+          // Transformed u and v
+          ic.drawArrow([0, 0], uT, '#DC2626', 2.6);
+          ic.drawArrow([0, 0], vT, '#059669', 2.6);
+          ic.drawLabel('A½ u', uT, '#DC2626', [8, 12]);
+          ic.drawLabel('A½ v', vT, '#059669', [8, -8]);
+
+          ic.drawHandle(uT, '#DC2626', ic.hoverHandle && ic.hoverHandle.id === 'uT');
+          ic.drawHandle(vT, '#059669', ic.hoverHandle && ic.hoverHandle.id === 'vT');
+        }
+      });
+
+      canvasT2Left.setHandles([
+        {
+          id: 'u',
+          getPos: () => t2State.u,
+          setPos: (wx, wy) => { t2State.u = [LA.clamp(wx, -1.5, 4.2), LA.clamp(wy, -1.5, 4.0)]; updateT2(); }
+        },
+        {
+          id: 'v',
+          getPos: () => t2State.v,
+          setPos: (wx, wy) => { t2State.v = [LA.clamp(wx, -1.5, 4.2), LA.clamp(wy, -1.5, 4.0)]; updateT2(); }
+        }
+      ]);
+
+      canvasT2Right.setHandles([
+        {
+          id: 'uT',
+          getPos: () => LA.matVec(LA.sqrtSym2(getT2Matrix()), t2State.u),
+          setPos: (wx, wy) => {
+            const invHalf = LA.inv2(LA.sqrtSym2(getT2Matrix()));
+            const orig = LA.matVec(invHalf, [wx, wy]);
+            t2State.u = [LA.clamp(orig[0], -1.5, 4.2), LA.clamp(orig[1], -1.5, 4.0)];
+            updateT2();
+          }
+        },
+        {
+          id: 'vT',
+          getPos: () => LA.matVec(LA.sqrtSym2(getT2Matrix()), t2State.v),
+          setPos: (wx, wy) => {
+            const invHalf = LA.inv2(LA.sqrtSym2(getT2Matrix()));
+            const orig = LA.matVec(invHalf, [wx, wy]);
+            t2State.v = [LA.clamp(orig[0], -1.5, 4.2), LA.clamp(orig[1], -1.5, 4.0)];
+            updateT2();
+          }
+        }
+      ]);
+
+      function updateT2() {
+        const A = getT2Matrix();
+        const I = JUDGES.app.A;
+        const { u, v } = t2State;
+
+        document.getElementById('t2-l1-val').textContent = fmt(t2State.l1);
+        document.getElementById('t2-l2-val').textContent = fmt(t2State.l2);
+        document.getElementById('t2-phi-val').textContent = `${t2State.phiDeg}°`;
+        document.getElementById('t2-judge-col-head').textContent = getT2JudgeName();
+
+        const matHtml = `<span>${fmt(A[0][0], 3)}</span><span>${fmt(A[0][1], 3)}</span><span>${fmt(A[1][0], 3)}</span><span>${fmt(A[1][1], 3)}</span>`;
+        document.getElementById('t2-matrix-box').innerHTML = matHtml;
+        document.getElementById('t2-active-matrix').innerHTML = matHtml;
+
+        const rgAngleA = LA.angleADeg(A, [1, 0], [0, 1]);
+        const rows = [
+          ['Inner product ⟨u, v⟩', fmt(LA.innerA(I, u, v)), fmt(LA.innerA(A, u, v)), 'Weighted alignment of u and v'],
+          ['Length ‖u‖', fmt(LA.normA(I, u)), fmt(LA.normA(A, u)), 'Magnitude of reddish color'],
+          ['Length ‖v‖', fmt(LA.normA(I, v)), fmt(LA.normA(A, v)), 'Magnitude of greenish color'],
+          ['Distance d(u, v) = ‖u − v‖', fmt(LA.distA(I, u, v)), fmt(LA.distA(A, u, v)), 'Perceived difference between u and v'],
+          ['Angle θ(u, v)', `${fmt(LA.angleADeg(I, u, v), 1)}°`, `${fmt(LA.angleADeg(A, u, v), 1)}°`, 'Smaller angle = colors feel more aligned'],
+          ['Angle (pure red, pure green)', '90.0°', `${fmt(rgAngleA, 1)}°`, Math.abs(rgAngleA - 90) > 1 ? 'No longer orthogonal under A!' : 'Orthogonal channels']
+        ];
+
+        document.getElementById('t2-metrics-tbody').innerHTML = rows.map(r => `
+          <tr>
+            <td><strong>${r[0]}</strong></td>
+            <td class="mono">${r[1]}</td>
+            <td class="mono" style="color: var(--c-amber);">${r[2]}</td>
+            <td style="color: var(--ink-secondary);">${r[3]}</td>
+          </tr>
+        `).join('');
+
+        canvasT2Left.render();
+        canvasT2Right.render();
+      }
+
+      /* ---------------------------------------------------------------------
+         5. TAB 3: PROJECTIONS, OLS & GLS (THREE JUDGES, THREE PATCHES)
+         --------------------------------------------------------------------- */
+      const t3State = {
+        mode: 'compare',      // 'compare' | 'single'
+        judge: 'app',         // 'app' | 'landlord' | 'student' | 'gls'
+        y: [3.5, 2.5],
+        x: [4.0, 1.0],
+        vScalar: 0.5,         // test point v = vScalar * x along S
+        s1: 1.0,
+        s2: 2.0,
+        rho: 0.0,
+        transformTarget: 0,   // 0 = paper coords, 1 = A^{1/2} coords
+        transformT: 0,
+        animId: null
+      };
+
+      function getT3SingleMatrix() {
+        if (t3State.judge === 'gls') {
+          const { s1, s2, rho } = t3State;
+          const cov = rho * s1 * s2;
+          const Omega = [[s1 * s1, cov], [cov, s2 * s2]];
+          return LA.inv2(Omega);
+        }
+        return JUDGES[t3State.judge].A;
+      }
+
+      function projectOntoX(y, x, A) {
+        const denom = LA.innerA(A, x, x);
+        const bHat = denom > 1e-10 ? LA.innerA(A, x, y) / denom : 0;
+        const yHat = LA.scale(x, bHat);
+        const e = LA.sub(y, yHat);
+        const distA = LA.normA(A, e);
+        return { bHat, yHat, e, distA };
+      }
+
+      const canvasT3 = new InteractiveCanvas(document.getElementById('canvas-t3'), {
+        bounds: { xMin: -0.8, xMax: 6.5, yMin: -0.8, yMax: 5.0 },
+        onDraw: (ic) => {
+          const { mode, y, x, vScalar, transformT } = t3State;
+
+          if (mode === 'compare') {
+            ic.drawGrid({ xLabel: 'Channel 1', yLabel: 'Channel 2' });
+            ic.drawLineThrough([0, 0], x, '#94A3B8', 2.4);
+            ic.drawLabel('Palette S = col(X)', LA.scale(x, 1.38), '#475569', [6, -12]);
+
+            const pApp = projectOntoX(y, x, JUDGES.app.A);
+            const pLand = projectOntoX(y, x, JUDGES.landlord.A);
+            const pStud = projectOntoX(y, x, JUDGES.student.A);
+
+            // Tangent ellipses/circle centered at y
+            ic.drawEllipseA(y, JUDGES.app.A, pApp.distA, '#64748B', 1.7);
+            ic.drawEllipseA(y, JUDGES.landlord.A, pLand.distA, '#DC2626', 1.9);
+            ic.drawEllipseA(y, JUDGES.student.A, pStud.distA, '#2563EB', 1.9);
+
+            // Projection segments
+            ic.drawSegment(y, pApp.yHat, '#64748B', 1.8, [5, 4]);
+            ic.drawSegment(y, pLand.yHat, '#DC2626', 1.8, [5, 4]);
+            ic.drawSegment(y, pStud.yHat, '#2563EB', 1.8, [5, 4]);
+
+            // Right angle only for App (A = I)
+            ic.drawRightAngle(pApp.yHat, x, pApp.e, '#64748B', 10);
+
+            // Patch points
+            ic.drawPoint(pStud.yHat, '#2563EB', 5.5);
+            ic.drawPoint(pApp.yHat, '#64748B', 5.5);
+            ic.drawPoint(pLand.yHat, '#DC2626', 5.5);
+
+            ic.drawLabel('1 (Student)', pStud.yHat, '#2563EB', [-12, 18]);
+            ic.drawLabel('3 (App)', pApp.yHat, '#475569', [-8, 18]);
+            ic.drawLabel('2 (Landlord)', pLand.yHat, '#DC2626', [6, 18]);
+
+            // Wall y & tube x
+            ic.drawArrow([0, 0], x, '#059669', 2.0);
+            ic.drawPoint(y, '#1E293B', 5.5);
+            ic.drawLabel(`wall y ${fmtVec(y, 1)}`, y, '#1E293B', [10, -10]);
+            ic.drawLabel('x', x, '#059669', [6, -10]);
+
+            ic.drawHandle(y, '#1E293B', ic.hoverHandle && ic.hoverHandle.id === 'y');
+            ic.drawHandle(x, '#059669', ic.hoverHandle && ic.hoverHandle.id === 'x');
+            return;
+          }
+
+          // SINGLE JUDGE + PYTHAGORAS + COORDINATE TRANSFORM
+          const A = getT3SingleMatrix();
+          const Ahalf = LA.sqrtSym2(A);
+          // Normalize Ahalf slightly if very large so it stays nicely inside viewport
+          const M = LA.lerpFromEye(Ahalf, transformT);
+          const T = (pt) => LA.matVec(M, pt);
+
+          ic.drawGrid({
+            xLabel: transformT > 0.5 ? 'Whitened axis 1 (C y)' : 'Channel 1',
+            yLabel: transformT > 0.5 ? 'Whitened axis 2 (C y)' : 'Channel 2'
+          });
+
+          const proj = projectOntoX(y, x, A);
+          const v = LA.scale(x, vScalar);
+
+          const yT = T(y), xT = T(x), yHatT = T(proj.yHat), vT = T(v);
+
+          // Subspace S
+          ic.drawLineThrough([0, 0], xT, '#94A3B8', 2.4);
+
+          // Concentric iso-distance curves centered at y
+          [0.5, 1.0, 1.45].forEach((mult, idx) => {
+            ic.drawEllipseA(y, A, proj.distA * mult, idx === 1 ? '#D97706' : 'rgba(217, 119, 6, 0.35)', idx === 1 ? 2.0 : 1.3, idx === 2 ? [5, 5] : [], M);
+          });
+
+          // Pythagoras triangle: y - v (dashed), residual e = y - yHat (crimson), yHat - v (emerald)
+          ic.drawSegment(vT, yT, '#64748B', 1.8, [5, 5]);
+          ic.drawArrow([0, 0], yT, '#2563EB', 2.4);
+          ic.drawArrow([0, 0], yHatT, '#059669', 2.6);
+          ic.drawArrow(yHatT, yT, '#DC2626', 2.6);
+
+          // Right angle marker when geometry is Euclidean (App or transformed t ~ 1)
+          if (t3State.judge === 'app' || transformT > 0.85) {
+            ic.drawRightAngle(yHatT, xT, LA.sub(yT, yHatT), '#DC2626', 11);
+          }
+
+          // Points & labels
+          ic.drawPoint(vT, '#059669', 5.5);
+          ic.drawLabel('v ∈ S (drag)', vT, '#059669', [-20, 20]);
+          ic.drawLabel('ŷ', yHatT, '#059669', [8, 16]);
+          ic.drawLabel('y', yT, '#2563EB', [10, -8]);
+          ic.drawLabel('e = y − ŷ', [0.5 * (yT[0] + yHatT[0]), 0.5 * (yT[1] + yHatT[1])], '#DC2626', [8, 0]);
+
+          // Handles (draggable in original coordinates)
+          if (transformT < 0.05) {
+            ic.drawHandle(y, '#2563EB', ic.hoverHandle && ic.hoverHandle.id === 'y');
+            ic.drawHandle(x, '#059669', ic.hoverHandle && ic.hoverHandle.id === 'x');
+            ic.drawHandle(v, '#059669', ic.hoverHandle && ic.hoverHandle.id === 'v');
+          }
+        }
+      });
+
+      canvasT3.setHandles([
+        {
+          id: 'y',
+          getPos: () => t3State.y,
+          setPos: (wx, wy) => {
+            if (t3State.mode === 'single' && t3State.transformT > 0.05) return;
+            t3State.y = [LA.clamp(wx, -0.5, 6.0), LA.clamp(wy, -0.5, 4.6)];
+            updateT3();
+          }
+        },
+        {
+          id: 'x',
+          getPos: () => t3State.x,
+          setPos: (wx, wy) => {
+            if (t3State.mode === 'single' && t3State.transformT > 0.05) return;
+            if (Math.hypot(wx, wy) < 0.4) return;
+            t3State.x = [LA.clamp(wx, -0.5, 6.0), LA.clamp(wy, -0.5, 4.6)];
+            updateT3();
+          }
+        },
+        {
+          id: 'v',
+          getPos: () => LA.scale(t3State.x, t3State.vScalar),
+          setPos: (wx, wy) => {
+            if (t3State.mode !== 'single' || t3State.transformT > 0.05) return;
+            const xx = LA.dot(t3State.x, t3State.x);
+            if (xx > 1e-6) {
+              t3State.vScalar = LA.clamp(LA.dot([wx, wy], t3State.x) / xx, -0.2, 1.6);
+              updateT3();
+            }
+          }
+        }
+      ]);
+
+      function updateT3() {
+        const { mode, y, x, vScalar } = t3State;
+        document.getElementById('t3-s1-val').textContent = fmt(t3State.s1);
+        document.getElementById('t3-s2-val').textContent = fmt(t3State.s2);
+        document.getElementById('t3-rho-val').textContent = fmt(t3State.rho);
+
+        if (mode === 'compare') {
+          const items = [
+            { label: 'Art Student (1)', color: 'var(--c-blue)', ...projectOntoX(y, x, JUDGES.student.A) },
+            { label: 'App / OLS (3)', color: 'var(--c-slate)', ...projectOntoX(y, x, JUDGES.app.A) },
+            { label: 'Landlord (2)', color: 'var(--c-crimson)', ...projectOntoX(y, x, JUDGES.landlord.A) }
+          ];
+          document.getElementById('t3-compare-tbody').innerHTML = items.map(it => `
+            <tr>
+              <td><strong style="color:${it.color}">${it.label}</strong></td>
+              <td class="mono">${fmt(it.bHat)}</td>
+              <td class="mono">${fmtVec(it.yHat)}</td>
+              <td class="mono">${fmt(it.distA)}</td>
+            </tr>
+          `).join('');
+        } else {
+          const A = getT3SingleMatrix();
+          const proj = projectOntoX(y, x, A);
+          const v = LA.scale(x, vScalar);
+          const dYv2 = Math.pow(LA.distA(A, y, v), 2);
+          const dE2 = Math.pow(proj.distA, 2);
+          const dDiff2 = Math.pow(LA.distA(A, proj.yHat, v), 2);
+
+          document.getElementById('t3-bhat').textContent = fmt(proj.bHat, 3);
+          document.getElementById('t3-yhat').textContent = fmtVec(proj.yHat);
+          document.getElementById('t3-aorth').textContent = fmt(LA.innerA(A, proj.e, x), 4);
+          document.getElementById('t3-eorth').textContent = fmt(LA.dot(proj.e, x), 3);
+          document.getElementById('t3-pyth-eq').textContent =
+            `‖y − v‖²_A (${fmt(dYv2)}) = ‖e‖²_A (${fmt(dE2)}) + ‖ŷ − v‖²_A (${fmt(dDiff2)})`;
+
+          if (t3State.judge === 'app') {
+            const cosT = LA.dot(y, proj.yHat) / (LA.norm(y) * Math.max(1e-8, LA.norm(proj.yHat)));
+            const r2 = cosT * cosT;
+            document.getElementById('t3-r2-note').textContent = `OLS Geometry: uncentered R² = cos²(θ) = ${fmt(r2, 3)} (θ = ${fmt(LA.angleADeg(JUDGES.app.A, y, proj.yHat), 1)}°)`;
+          } else {
+            document.getElementById('t3-r2-note').textContent = `Any nudge away from ŷ strictly increases ‖y − v‖²_A!`;
+          }
+        }
+        canvasT3.render();
+      }
+
+      function animateT3Transform(target) {
+        t3State.transformTarget = target;
+        if (t3State.animId) cancelAnimationFrame(t3State.animId);
+        const start = t3State.transformT;
+        const startTime = performance.now();
+        const dur = 550;
+
+        function step(now) {
+          const p = LA.clamp((now - startTime) / dur, 0, 1);
+          const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+          t3State.transformT = start + (target - start) * ease;
+          const badge = document.getElementById('t3-coord-badge');
+          badge.textContent = t3State.transformT > 0.5 ? 'Judge Coordinates (C = A½)' : 'Original Coordinates';
+          badge.className = t3State.transformT > 0.5 ? 'badge amber' : 'badge blue';
+          canvasT3.render();
+          if (p < 1) {
+            t3State.animId = requestAnimationFrame(step);
+          } else {
+            t3State.animId = null;
+          }
+        }
+        t3State.animId = requestAnimationFrame(step);
+      }
+
+      /* ---------------------------------------------------------------------
+         6. TAB 4: IV, ENDOGENEITY & 2SLS (ROOM LIGHT & LIGHT-BLIND SENSOR)
+         --------------------------------------------------------------------- */
+      const t4State = {
+        x: [1.0, 0.0],
+        beta: 3.0,
+        u: [1.0, 2.0],
+        z: [2.0, -1.0]
+      };
+
+      const canvasT4 = new InteractiveCanvas(document.getElementById('canvas-t4'), {
+        bounds: { xMin: -2.0, xMax: 6.5, yMin: -2.5, yMax: 4.5 },
+        onDraw: (ic) => {
+          ic.drawGrid({ xLabel: 'span{x} direction', yLabel: 'Orthogonal to x' });
+          const { x, beta, u, z } = t4State;
+          const bx = LA.scale(x, beta);
+          const y = LA.add(bx, u);
+
+          const xx = LA.dot(x, x);
+          const bOLS = LA.dot(x, y) / xx;
+          const yOLS = LA.scale(x, bOLS);
+
+          const zx = LA.dot(z, x);
+          const zy = LA.dot(z, y);
+          const zz = LA.dot(z, z);
+          const hasIV = Math.abs(zx) > 0.04;
+          const bIV = hasIV ? zy / zx : NaN;
+          const yIV = hasIV ? LA.scale(x, bIV) : null;
+
+          // span{x} and span{z}
+          ic.drawLineThrough([0, 0], x, '#CBD5E1', 2.2);
+          ic.drawLineThrough([0, 0], z, 'rgba(124, 58, 237, 0.35)', 2.0);
+          ic.drawLabel('span{x}', [5.3, 0], '#64748B', [0, 16]);
+          ic.drawLabel('span{z}', LA.scale(z, 1.35), '#7C3AED', [6, -6]);
+
+          // Shadows on span{z}: P_z x and P_z y
+          if (zz > 1e-6) {
+            const Pzx = LA.scale(z, zx / zz);
+            const Pzy = LA.scale(z, zy / zz);
+            ic.drawSegment(x, Pzx, 'rgba(124, 58, 237, 0.35)', 1.3, [4, 4]);
+            ic.drawSegment(y, Pzy, 'rgba(124, 58, 237, 0.45)', 1.5, [4, 4]);
+            ic.drawArrow([0, 0], Pzx, '#8B5CF6', 2.2);
+            ic.drawArrow([0, 0], Pzy, '#7C3AED', 2.6);
+            ic.drawPoint(Pzy, '#7C3AED', 4);
+            ic.drawLabel('P_z y', Pzy, '#7C3AED', [8, 12]);
+          }
+
+          // OLS orthogonal drop from y to yOLS
+          ic.drawSegment(y, yOLS, '#94A3B8', 1.6, [5, 4]);
+          ic.drawRightAngle(yOLS, x, LA.sub(y, yOLS), '#94A3B8', 9);
+
+          // Highlight Endogeneity Bias = P_x u along span{x}
+          if (Math.abs(bOLS - beta) > 0.05) {
+            ic.drawSegment(bx, yOLS, '#DC2626', 5.0);
+            ic.drawLabel(`Bias = ${fmt(bOLS - beta)}`, [0.5 * (bx[0] + yOLS[0]), -0.25], '#DC2626', [-26, 16]);
+          }
+
+          // Oblique IV projection line (parallel to z^perp) from y to yIV
+          if (hasIV && Math.abs(bIV) < 12) {
+            ic.drawSegment(y, yIV, '#7C3AED', 2.2, [6, 4]);
+            ic.drawPoint(yIV, '#7C3AED', 5.5);
+            ic.drawLabel(`β̂_IV x`, yIV, '#7C3AED', [-16, -14]);
+          }
+
+          // True beta*x, error u, data y, instrument z
+          ic.drawArrow([0, 0], bx, '#059669', 2.8);
+          ic.drawArrow(bx, y, '#DC2626', 2.4);
+          ic.drawArrow([0, 0], y, '#2563EB', 2.6);
+          ic.drawArrow([0, 0], z, '#7C3AED', 2.5);
+          ic.drawPoint(yOLS, '#475569', 4.5);
+
+          // Labels
+          ic.drawLabel('βx (True)', [bx[0] * 0.55, 0], '#059669', [-20, -10]);
+          ic.drawLabel('u (room light)', [bx[0] + u[0] * 0.5, u[1] * 0.5], '#DC2626', [8, 0]);
+          ic.drawLabel(`y ${fmtVec(y, 1)}`, y, '#2563EB', [10, -8]);
+          ic.drawLabel(`z ${fmtVec(z, 1)}`, z, '#7C3AED', [10, 12]);
+          ic.drawLabel('β̂_OLS x', yOLS, '#475569', [6, -10]);
+
+          // Handles
+          ic.drawHandle(y, '#2563EB', ic.hoverHandle && ic.hoverHandle.id === 'y');
+          ic.drawHandle(z, '#7C3AED', ic.hoverHandle && ic.hoverHandle.id === 'z');
+        }
+      });
+
+      canvasT4.setHandles([
+        {
+          id: 'y',
+          getPos: () => LA.add(LA.scale(t4State.x, t4State.beta), t4State.u),
+          setPos: (wx, wy) => {
+            const bx = LA.scale(t4State.x, t4State.beta);
+            t4State.u = [LA.clamp(wx - bx[0], -4.5, 4.5), LA.clamp(wy - bx[1], -3.0, 4.0)];
+            updateT4();
+          }
+        },
+        {
+          id: 'z',
+          getPos: () => t4State.z,
+          setPos: (wx, wy) => {
+            if (Math.hypot(wx, wy) < 0.35) return;
+            t4State.z = [LA.clamp(wx, -1.8, 5.5), LA.clamp(wy, -2.2, 4.0)];
+            updateT4();
+          }
+        }
+      ]);
+
+      function updateT4() {
+        const { x, beta, u, z } = t4State;
+        const y = LA.add(LA.scale(x, beta), u);
+        const bOLS = LA.dot(x, y) / LA.dot(x, x);
+        const zx = LA.dot(z, x);
+        const zy = LA.dot(z, y);
+        const bIV = Math.abs(zx) > 1e-4 ? zy / zx : Infinity;
+
+        document.getElementById('t4-beta-val').textContent = fmt(beta);
+        document.getElementById('t4-true-b').textContent = fmt(beta);
+        document.getElementById('t4-ols-b').textContent = fmt(bOLS);
+        document.getElementById('t4-ols-bias').textContent = `Bias: ${bOLS - beta >= 0 ? '+' : ''}${fmt(bOLS - beta)}`;
+        document.getElementById('t4-iv-b').textContent = Math.abs(bIV) > 99 ? 'EXPLODED!' : fmt(bIV);
+        document.getElementById('t4-iv-bias').textContent = Math.abs(bIV) > 99
+          ? 'Dividing by ≈ 0'
+          : `Bias: ${bIV - beta >= 0 ? '+' : ''}${fmt(bIV - beta)}`;
+
+        // Exogeneity gauge: |cos(theta_{z,u})|
+        const nu = LA.norm(u), nz = LA.norm(z);
+        const exogCorr = nu > 1e-6 && nz > 1e-6 ? Math.abs(LA.dot(z, u)) / (nz * nu) : 0;
+        const exogBadge = document.getElementById('t4-exog-badge');
+        const exogBar = document.getElementById('t4-exog-bar');
+        exogBar.style.width = `${Math.max(2, exogCorr * 100)}%`;
+        if (exogCorr < 0.08) {
+          exogBadge.className = 'badge green';
+          exogBadge.textContent = `Light-blind! (${fmt(exogCorr)})`;
+          exogBar.style.background = 'var(--c-emerald)';
+        } else if (exogCorr < 0.25) {
+          exogBadge.className = 'badge amber';
+          exogBadge.textContent = `Slightly contaminated (${fmt(exogCorr)})`;
+          exogBar.style.background = 'var(--c-amber)';
+        } else {
+          exogBadge.className = 'badge red';
+          exogBadge.textContent = `Contaminated! (${fmt(exogCorr)})`;
+          exogBar.style.background = 'var(--c-crimson)';
+        }
+
+        // Relevance gauge: |cos(theta_{z,x})|
+        const relCorr = nz > 1e-6 ? Math.abs(zx) / (nz * LA.norm(x)) : 0;
+        const relBadge = document.getElementById('t4-rel-badge');
+        const relBar = document.getElementById('t4-rel-bar');
+        relBar.style.width = `${Math.max(2, relCorr * 100)}%`;
+        if (relCorr < 0.18) {
+          relBadge.className = 'badge red';
+          relBadge.textContent = `WEAK INSTRUMENT! (${fmt(relCorr)})`;
+          relBar.style.background = 'var(--c-crimson)';
+        } else if (relCorr < 0.4) {
+          relBadge.className = 'badge amber';
+          relBadge.textContent = `Moderate (${fmt(relCorr)})`;
+          relBar.style.background = 'var(--c-amber)';
+        } else {
+          relBadge.className = 'badge green';
+          relBadge.textContent = `Strong (${fmt(relCorr)})`;
+          relBar.style.background = 'var(--c-emerald)';
+        }
+
+        const note = document.getElementById('t4-diag-note');
+        if (relCorr < 0.18) {
+          note.className = 'callout crimson';
+          note.innerHTML = '<strong>Weak Instrument Warning!</strong> z is nearly perpendicular to x, so ⟨z, x⟩ ≈ 0. Even a tiny violation of exogeneity causes β̂<sub>IV</sub> = ⟨z, y⟩ / ⟨z, x⟩ to explode!';
+        } else if (exogCorr >= 0.08) {
+          note.className = 'callout crimson';
+          note.innerHTML = '<strong>Exogeneity Violated:</strong> The sensor z sees part of the room light (⟨z, u⟩ ≠ 0), so β̂<sub>IV</sub> is biased too.';
+        } else {
+          note.className = 'callout emerald';
+          note.innerHTML = '<strong>Valid Instrument!</strong> z is orthogonal to the room light u (exogenous) and strongly aligned with x (relevant), so β̂<sub>IV</sub> recovers the true β.';
+        }
+
+        canvasT4.render();
+      }
+
+      /* ---------------------------------------------------------------------
+         7. TAB 5: GMM — COMPARING SENSOR READINGS IN MOMENT SPACE R^2
+         --------------------------------------------------------------------- */
+      const t5State = {
+        m: [2.0, 2.5],
+        D: [3.0, 1.0],
+        preset: 'noisy2',
+        w1: 1.0,
+        w2: 0.25,
+        wRho: 0.0,
+        n: 4
+      };
+
+      function getT5WMatrix() {
+        if (t5State.preset === 'eye') return [[1, 0], [0, 1]];
+        if (t5State.preset === 'noisy2') return [[1, 0], [0, 0.25]];
+        if (t5State.preset === 'noisy1') return [[0.25, 0], [0, 1]];
+        const { w1, w2, wRho } = t5State;
+        const off = wRho * Math.sqrt(w1 * w2);
+        return [[w1, off], [off, w2]];
+      }
+
+      const canvasT5 = new InteractiveCanvas(document.getElementById('canvas-t5'), {
+        bounds: { xMin: -0.8, xMax: 4.8, yMin: -0.5, yMax: 4.3 },
+        onDraw: (ic) => {
+          ic.drawGrid({ xLabel: 'Reading of sensor 1', yLabel: 'Reading of sensor 2' });
+          const { m, D } = t5State;
+          const W = getT5WMatrix();
+          const I = [[1, 0], [0, 1]];
+
+          const pEye = projectOntoX(m, D, I);
+          const pGMM = projectOntoX(m, D, W);
+
+          // col(D) line
+          ic.drawLineThrough([0, 0], D, '#94A3B8', 2.4);
+          ic.drawLabel('col(D) = {Db}', LA.scale(D, 1.25), '#475569', [6, -10]);
+
+          // Equal weights gray dashed circle
+          ic.drawEllipseA(m, I, pEye.distA, '#94A3B8', 1.5, [5, 5]);
+          ic.drawSegment(m, pEye.yHat, '#94A3B8', 1.4, [3, 3]);
+          ic.drawPoint(pEye.yHat, '#64748B', 4.5);
+          ic.drawLabel('D β̂_{W=I}', pEye.yHat, '#64748B', [8, 16]);
+
+          // Concentric orange W-ellipses centered at m
+          [0.45, 0.75, 1.0].forEach((mult, idx) => {
+            ic.drawEllipseA(m, W, pGMM.distA * mult, idx === 2 ? '#D97706' : 'rgba(217, 119, 6, 0.35)', idx === 2 ? 2.2 : 1.3);
+          });
+
+          // Vector D
+          ic.drawArrow([0, 0], D, '#475569', 2.2);
+          ic.drawLabel('D', D, '#475569', [8, 14]);
+
+          // Miss vector g_bar(beta_hat) = m - D*beta_hat
+          ic.drawArrow(pGMM.yHat, m, '#DC2626', 2.6);
+          ic.drawLabel('ḡ(β̂)', [0.5 * (pGMM.yHat[0] + m[0]), 0.5 * (pGMM.yHat[1] + m[1])], '#DC2626', [-36, 0]);
+
+          // Points m and D*beta_GMM
+          ic.drawPoint(pGMM.yHat, '#059669', 5.5);
+          ic.drawLabel('D β̂_GMM', pGMM.yHat, '#059669', [-28, 20]);
+
+          ic.drawPoint(m, '#2563EB', 5.5);
+          ic.drawLabel(`m = (1/n)Z'y ${fmtVec(m, 1)}`, m, '#2563EB', [10, -8]);
+
+          // Handles
+          ic.drawHandle(m, '#2563EB', ic.hoverHandle && ic.hoverHandle.id === 'm');
+          ic.drawHandle(D, '#475569', ic.hoverHandle && ic.hoverHandle.id === 'D');
+        }
+      });
+
+      canvasT5.setHandles([
+        {
+          id: 'm',
+          getPos: () => t5State.m,
+          setPos: (wx, wy) => { t5State.m = [LA.clamp(wx, -0.5, 4.5), LA.clamp(wy, -0.3, 4.0)]; updateT5(); }
+        },
+        {
+          id: 'D',
+          getPos: () => t5State.D,
+          setPos: (wx, wy) => {
+            if (Math.hypot(wx, wy) < 0.35) return;
+            t5State.D = [LA.clamp(wx, -0.5, 4.5), LA.clamp(wy, -0.3, 4.0)];
+            updateT5();
+          }
+        }
+      ]);
+
+      function updateT5() {
+        const { m, D, n } = t5State;
+        const W = getT5WMatrix();
+        const pEye = projectOntoX(m, D, [[1, 0], [0, 1]]);
+        const pGMM = projectOntoX(m, D, W);
+        const g = pGMM.e; // m - D*bHat
+        const J = n * LA.innerA(W, g, g);
+        const pVal = LA.chi2PValue1(J);
+
+        document.getElementById('t5-w1-val').textContent = fmt(t5State.w1);
+        document.getElementById('t5-w2-val').textContent = fmt(t5State.w2);
+        document.getElementById('t5-wrho-val').textContent = fmt(t5State.wRho);
+        document.getElementById('t5-n-val').textContent = String(n);
+
+        document.getElementById('t5-b-eye').textContent = fmt(pEye.bHat);
+        document.getElementById('t5-b-gmm').textContent = fmt(pGMM.bHat);
+        document.getElementById('t5-g1').textContent = (g[0] >= 0 ? '+' : '') + fmt(g[0]);
+        document.getElementById('t5-g2').textContent = (g[1] >= 0 ? '+' : '') + fmt(g[1]);
+
+        document.getElementById('t5-j-val').textContent = `J = ${fmt(J)}`;
+        document.getElementById('t5-p-val').textContent = pVal < 0.001 ? 'p < 0.001' : `p = ${fmt(pVal, 3)}`;
+
+        const rejected = pVal < 0.05;
+        const jBadge = document.getElementById('t5-j-badge');
+        jBadge.className = rejected ? 'badge red' : 'badge green';
+        jBadge.textContent = rejected ? 'Rejected (p < 0.05)' : 'Valid Moments (p ≥ 0.05)';
+
+        const jBar = document.getElementById('t5-j-bar');
+        jBar.style.width = `${LA.clamp((J / 8) * 100, 2, 100)}%`;
+        jBar.style.background = rejected ? 'var(--c-crimson)' : 'var(--c-emerald)';
+
+        canvasT5.render();
+      }
+
+      /* ---------------------------------------------------------------------
+         8. UI EVENT WIRING & TAB MANAGEMENT
+         --------------------------------------------------------------------- */
+      function resizeAllVisibleCanvases() {
+        [canvasT1A, canvasT1B, canvasT2Left, canvasT2Right, canvasT3, canvasT4, canvasT5].forEach(c => c.resize());
+      }
+
+      function activateTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+        requestAnimationFrame(() => {
+          resizeAllVisibleCanvases();
+          if (tabId === 'tab1') { updateT1A(); updateT1B(); }
+          if (tabId === 'tab2') updateT2();
+          if (tabId === 'tab3') updateT3();
+          if (tabId === 'tab4') updateT4();
+          if (tabId === 'tab5') updateT5();
+        });
+      }
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+      });
+
+      // Tab 6 clickable rows -> jump to corresponding lab
+      document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const target = row.dataset.goto;
+          const sub = row.dataset.sub;
+          if (target === 'tab3' && sub) {
+            // Switch Tab 3 to single mode and select OLS or GLS
+            document.querySelectorAll('#t3-mode-switch .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'single'));
+            t3State.mode = 'single';
+            t3State.judge = sub === 'gls' ? 'gls' : 'app';
+            document.getElementById('t3-compare-panel').style.display = 'none';
+            document.getElementById('t3-single-panel').style.display = 'block';
+            document.getElementById('t3-transform-btn').style.display = 'inline-block';
+            document.getElementById('t3-gls-controls').style.display = sub === 'gls' ? 'block' : 'none';
+            document.querySelectorAll('#t3-judge-btns .btn').forEach(b => b.classList.toggle('active', b.dataset.judge === t3State.judge));
+          }
+          activateTab(target);
+        });
+      });
+
+      // Tab 1 controls
+      document.querySelectorAll('#t1-mode-switch .seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#t1-mode-switch .seg-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          t1State.mode = btn.dataset.mode;
+          document.getElementById('t1-mode-subspace').style.display = t1State.mode === 'subspace' ? 'grid' : 'none';
+          document.getElementById('t1-mode-span').style.display = t1State.mode === 'span' ? 'grid' : 'none';
+          requestAnimationFrame(() => { canvasT1A.resize(); canvasT1B.resize(); updateT1A(); updateT1B(); });
+        });
+      });
+
+      document.getElementById('t1a-c').addEventListener('input', e => { t1State.c = parseFloat(e.target.value); updateT1A(); });
+      document.getElementById('t1a-m').addEventListener('input', e => { t1State.m = parseFloat(e.target.value); updateT1A(); });
+      document.getElementById('t1a-alpha').addEventListener('input', e => { t1State.alpha = parseFloat(e.target.value); updateT1A(); });
+      document.getElementById('t1a-preset-subspace').addEventListener('click', () => {
+        t1State.c = 0; t1State.m = 0.5;
+        document.getElementById('t1a-c').value = '0';
+        document.getElementById('t1a-m').value = '0.5';
+        updateT1A();
+      });
+      document.getElementById('t1a-preset-shifted').addEventListener('click', () => {
+        t1State.c = 1.0; t1State.m = 0.5;
+        document.getElementById('t1a-c').value = '1';
+        document.getElementById('t1a-m').value = '0.5';
+        updateT1A();
+      });
+
+      document.getElementById('t1b-b1').addEventListener('input', e => { t1State.b1 = parseFloat(e.target.value); updateT1B(); });
+      document.getElementById('t1b-b2').addEventListener('input', e => { t1State.b2 = parseFloat(e.target.value); updateT1B(); });
+      document.getElementById('t1b-orange-toggle').addEventListener('change', e => { t1State.orangeOn = e.target.checked; updateT1B(); });
+      document.getElementById('t1b-t').addEventListener('input', e => { t1State.tShift = parseFloat(e.target.value); updateT1B(); });
+      document.getElementById('t1b-preset-indep').addEventListener('click', () => { t1State.v1 = [2.0, 0.5]; t1State.v2 = [0.6, 1.8]; updateT1B(); });
+      document.getElementById('t1b-preset-collinear').addEventListener('click', () => { t1State.v1 = [1.5, 0.6]; t1State.v2 = [3.0, 1.2]; updateT1B(); });
+
+      document.getElementById('t1-reset').addEventListener('click', () => {
+        Object.assign(t1State, { m: 0.5, c: 0, alpha: -1.5, ux: 1.2, vx: 2.0, v1: [2.0, 0.5], v2: [0.6, 1.8], b1: 1.5, b2: 1.0, orangeOn: false, tShift: 0.6 });
+        document.getElementById('t1a-c').value = '0';
+        document.getElementById('t1a-m').value = '0.5';
+        document.getElementById('t1a-alpha').value = '-1.5';
+        document.getElementById('t1b-b1').value = '1.5';
+        document.getElementById('t1b-b2').value = '1.0';
+        document.getElementById('t1b-orange-toggle').checked = false;
+        updateT1A(); updateT1B();
+      });
+
+      // Tab 2 controls
+      document.querySelectorAll('#t2-judge-btns .btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#t2-judge-btns .btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          t2State.judge = btn.dataset.judge;
+          document.getElementById('t2-custom-panel').style.display = t2State.judge === 'custom' ? 'block' : 'none';
+          updateT2();
+        });
+      });
+      document.getElementById('t2-l1').addEventListener('input', e => { t2State.l1 = parseFloat(e.target.value); updateT2(); });
+      document.getElementById('t2-l2').addEventListener('input', e => { t2State.l2 = parseFloat(e.target.value); updateT2(); });
+      document.getElementById('t2-phi').addEventListener('input', e => { t2State.phiDeg = parseFloat(e.target.value); updateT2(); });
+      document.getElementById('t2-reset').addEventListener('click', () => {
+        Object.assign(t2State, { judge: 'landlord', u: [3.0, 1.0], v: [1.0, 2.0], l1: 4.0, l2: 0.25, phiDeg: 45 });
+        document.querySelectorAll('#t2-judge-btns .btn').forEach(b => b.classList.toggle('active', b.dataset.judge === 'landlord'));
+        document.getElementById('t2-custom-panel').style.display = 'none';
+        updateT2();
+      });
+
+      // Tab 3 controls
+      document.querySelectorAll('#t3-mode-switch .seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#t3-mode-switch .seg-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          t3State.mode = btn.dataset.mode;
+          t3State.transformT = 0;
+          t3State.transformTarget = 0;
+          const isSingle = t3State.mode === 'single';
+          document.getElementById('t3-compare-panel').style.display = isSingle ? 'none' : 'block';
+          document.getElementById('t3-single-panel').style.display = isSingle ? 'block' : 'none';
+          document.getElementById('t3-transform-btn').style.display = isSingle ? 'inline-block' : 'none';
+          document.getElementById('t3-transform-btn').innerHTML = 'Transform to Judge\'s Coordinates (C = A<sup>1/2</sup>)';
+          document.getElementById('t3-coord-badge').textContent = 'Original Coordinates';
+          document.getElementById('t3-coord-badge').className = 'badge blue';
+          document.getElementById('t3-canvas-title').textContent = isSingle
+            ? 'Single Judge Projection & Pythagoras Decomposition'
+            : 'Figure 6: Same Wall, Same Palette, Three Criteria';
+          updateT3();
+        });
+      });
+
+      document.querySelectorAll('#t3-judge-btns .btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#t3-judge-btns .btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          t3State.judge = btn.dataset.judge;
+          document.getElementById('t3-gls-controls').style.display = t3State.judge === 'gls' ? 'block' : 'none';
+          updateT3();
+        });
+      });
+
+      document.getElementById('t3-s1').addEventListener('input', e => { t3State.s1 = parseFloat(e.target.value); updateT3(); });
+      document.getElementById('t3-s2').addEventListener('input', e => { t3State.s2 = parseFloat(e.target.value); updateT3(); });
+      document.getElementById('t3-rho').addEventListener('input', e => { t3State.rho = parseFloat(e.target.value); updateT3(); });
+
+      document.getElementById('t3-transform-btn').addEventListener('click', () => {
+        const next = t3State.transformTarget > 0.5 ? 0 : 1;
+        document.getElementById('t3-transform-btn').innerHTML = next
+          ? 'Return to Original Coordinates'
+          : 'Transform to Judge\'s Coordinates (C = A<sup>1/2</sup>)';
+        animateT3Transform(next);
+      });
+
+      document.getElementById('t3-reset').addEventListener('click', () => {
+        Object.assign(t3State, { y: [3.5, 2.5], x: [4.0, 1.0], vScalar: 0.5, s1: 1.0, s2: 2.0, rho: 0.0, transformT: 0, transformTarget: 0 });
+        document.getElementById('t3-s1').value = '1.0';
+        document.getElementById('t3-s2').value = '2.0';
+        document.getElementById('t3-rho').value = '0.0';
+        document.getElementById('t3-transform-btn').innerHTML = 'Transform to Judge\'s Coordinates (C = A<sup>1/2</sup>)';
+        document.getElementById('t3-coord-badge').textContent = 'Original Coordinates';
+        updateT3();
+      });
+
+      // Tab 4 controls
+      document.getElementById('t4-beta').addEventListener('input', e => { t4State.beta = parseFloat(e.target.value); updateT4(); });
+      document.getElementById('t4-reset').addEventListener('click', () => {
+        Object.assign(t4State, { x: [1.0, 0.0], beta: 3.0, u: [1.0, 2.0], z: [2.0, -1.0] });
+        document.getElementById('t4-beta').value = '3';
+        updateT4();
+      });
+      document.getElementById('t4-pre-valid').addEventListener('click', () => {
+        Object.assign(t4State, { beta: 3.0, u: [1.0, 2.0], z: [2.0, -1.0] });
+        document.getElementById('t4-beta').value = '3';
+        updateT4();
+      });
+      document.getElementById('t4-pre-exog').addEventListener('click', () => {
+        Object.assign(t4State, { beta: 3.0, u: [0.0, 2.0], z: [2.0, 0.0] });
+        document.getElementById('t4-beta').value = '3';
+        updateT4();
+      });
+      document.getElementById('t4-pre-weak').addEventListener('click', () => {
+        Object.assign(t4State, { beta: 3.0, u: [1.0, 2.0], z: [0.15, 2.4] });
+        document.getElementById('t4-beta').value = '3';
+        updateT4();
+      });
+      document.getElementById('t4-pre-invalid').addEventListener('click', () => {
+        Object.assign(t4State, { beta: 3.0, u: [1.0, 2.0], z: [1.8, 1.5] });
+        document.getElementById('t4-beta').value = '3';
+        updateT4();
+      });
+
+      // Tab 5 controls
+      document.querySelectorAll('#t5-w-presets .btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#t5-w-presets .btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          t5State.preset = btn.dataset.w;
+          document.getElementById('t5-custom-w').style.display = t5State.preset === 'custom' ? 'block' : 'none';
+          updateT5();
+        });
+      });
+      document.getElementById('t5-w1').addEventListener('input', e => { t5State.w1 = parseFloat(e.target.value); updateT5(); });
+      document.getElementById('t5-w2').addEventListener('input', e => { t5State.w2 = parseFloat(e.target.value); updateT5(); });
+      document.getElementById('t5-wrho').addEventListener('input', e => { t5State.wRho = parseFloat(e.target.value); updateT5(); });
+      document.getElementById('t5-n').addEventListener('input', e => { t5State.n = parseInt(e.target.value, 10); updateT5(); });
+      document.getElementById('t5-reset').addEventListener('click', () => {
+        Object.assign(t5State, { m: [2.0, 2.5], D: [3.0, 1.0], preset: 'noisy2', w1: 1.0, w2: 0.25, wRho: 0.0, n: 4 });
+        document.querySelectorAll('#t5-w-presets .btn').forEach(b => b.classList.toggle('active', b.dataset.w === 'noisy2'));
+        document.getElementById('t5-custom-w').style.display = 'none';
+        document.getElementById('t5-n').value = '4';
+        updateT5();
+      });
+
+      // Responsive window resize
+      window.addEventListener('resize', () => {
+        resizeAllVisibleCanvases();
+      });
+
+      // Initial boot
+      window.addEventListener('load', () => {
+        window.renderAllMath();
+        resizeAllVisibleCanvases();
+        updateT1A();
+        updateT1B();
+        updateT2();
+        updateT3();
+        updateT4();
+        updateT5();
+      });
+    })();
+  </script>
+</body>
+</html>
